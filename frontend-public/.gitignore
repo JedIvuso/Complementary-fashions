@@ -1,0 +1,24 @@
+# ========================
+# Frontend Public .gitignore
+# ========================
+
+# Dependencies
+node_modules/
+
+# Build
+dist/
+.angular/
+
+# Environment (keep example, ignore actual)
+src/environments/environment.prod.ts
+
+# Logs
+*.log
+npm-debug.log*
+
+# TypeScript cache
+*.tsbuildinfo
+
+# OS
+.DS_Store
+Thumbs.db

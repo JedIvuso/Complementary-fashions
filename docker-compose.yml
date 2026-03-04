@@ -1,0 +1,81 @@
+version: '3.9'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: cf_postgres
+    environment:
+      POSTGRES_USER: cf_user
+      POSTGRES_PASSWORD: cf_secure_password
+      POSTGRES_DB: complementary_fashions
+    ports:
+      - '5432:5432'
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - cf_network
+
+  redis:
+    image: redis:7-alpine
+    container_name: cf_redis
+    ports:
+      - '6379:6379'
+    networks:
+      - cf_network
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: cf_backend
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgres://cf_user:cf_secure_password@postgres:5432/complementary_fashions
+      REDIS_URL: redis://redis:6379
+      JWT_SECRET: your_super_secret_jwt_key_change_in_production
+      JWT_EXPIRES_IN: 7d
+      PORT: 3000
+      CORS_ORIGINS: http://localhost:4200,http://localhost:4201
+      UPLOAD_DIR: /uploads
+      MAX_FILE_SIZE: 10485760
+    ports:
+      - '3000:3000'
+    depends_on:
+      - postgres
+      - redis
+    volumes:
+      - uploads_data:/uploads
+    networks:
+      - cf_network
+
+  frontend-public:
+    build:
+      context: ./frontend-public
+      dockerfile: Dockerfile
+    container_name: cf_frontend_public
+    ports:
+      - '4200:80'
+    depends_on:
+      - backend
+    networks:
+      - cf_network
+
+  frontend-admin:
+    build:
+      context: ./frontend-admin
+      dockerfile: Dockerfile
+    container_name: cf_frontend_admin
+    ports:
+      - '4201:80'
+    depends_on:
+      - backend
+    networks:
+      - cf_network
+
+volumes:
+  postgres_data:
+  uploads_data:
+
+networks:
+  cf_network:
+    driver: bridge

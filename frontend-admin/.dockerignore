@@ -1,0 +1,15 @@
+# ========================
+# Frontend Admin .dockerignore
+# ========================
+
+node_modules/
+dist/
+.angular/
+.env
+*.log
+*.tsbuildinfo
+.git/
+.gitignore
+README.md
+.DS_Store
+Thumbs.db
