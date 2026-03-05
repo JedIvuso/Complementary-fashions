@@ -215,7 +215,7 @@ import { environment } from "../../../../environments/environment";
 export class ProductCardComponent {
   @Input() product: any;
   adding = signal(false);
-  apiBase = environment.apiUrl.replace("/api/v1", "");
+  apiBase = environment.apiUrl.replace("/api", "");
 
   constructor(
     private auth: AuthService,

@@ -1,18 +1,20 @@
 import {
-  Injectable, NotFoundException, BadRequestException,
-} from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Like, Between, FindManyOptions } from 'typeorm';
-import { Product } from './product.entity';
-import { ProductImage } from './product-image.entity';
-import { ProductVariant } from './product-variant.entity';
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
+import { Repository, Like, Between, FindManyOptions } from "typeorm";
+import { Product } from "./product.entity";
+import { ProductImage } from "./product-image.entity";
+import { ProductVariant } from "./product-variant.entity";
 
 export interface ProductFilters {
   search?: string;
   categoryId?: string;
   minPrice?: number;
   maxPrice?: number;
-  sortBy?: 'price_asc' | 'price_desc' | 'newest' | 'popular';
+  sortBy?: "price_asc" | "price_desc" | "newest" | "popular";
   isAvailable?: boolean;
   isFeatured?: boolean;
   page?: number;
@@ -32,54 +34,64 @@ export class ProductsService {
 
   async findAll(filters: ProductFilters = {}) {
     const {
-      search, categoryId, minPrice, maxPrice,
-      sortBy = 'newest', isAvailable, isFeatured,
-      page = 1, limit = 12,
+      search,
+      categoryId,
+      minPrice,
+      maxPrice,
+      sortBy = "newest",
+      isAvailable,
+      isFeatured,
+      page = 1,
+      limit = 12,
     } = filters;
 
-    const query = this.productsRepository.createQueryBuilder('product')
-      .leftJoinAndSelect('product.category', 'category')
-      .leftJoinAndSelect('product.images', 'images')
-      .leftJoinAndSelect('product.variants', 'variants');
+    const query = this.productsRepository
+      .createQueryBuilder("product")
+      .leftJoinAndSelect("product.category", "category")
+      .leftJoinAndSelect("product.images", "images")
+      .leftJoinAndSelect("product.variants", "variants");
 
     if (search) {
-      query.andWhere('(product.name ILIKE :search OR product.description ILIKE :search)', {
-        search: `%${search}%`,
-      });
+      query.andWhere(
+        "(product.name ILIKE :search OR product.description ILIKE :search)",
+        {
+          search: `%${search}%`,
+        },
+      );
     }
 
     if (categoryId) {
-      query.andWhere('product.categoryId = :categoryId', { categoryId });
+      query.andWhere("product.categoryId = :categoryId", { categoryId });
     }
 
     if (minPrice !== undefined) {
-      query.andWhere('product.price >= :minPrice', { minPrice });
+      query.andWhere("product.price >= :minPrice", { minPrice });
     }
 
     if (maxPrice !== undefined) {
-      query.andWhere('product.price <= :maxPrice', { maxPrice });
+      query.andWhere("product.price <= :maxPrice", { maxPrice });
     }
 
     if (isAvailable !== undefined) {
-      query.andWhere('product.isAvailable = :isAvailable', { isAvailable });
+      query.andWhere("product.isAvailable = :isAvailable", { isAvailable });
     }
 
     if (isFeatured !== undefined) {
-      query.andWhere('product.isFeatured = :isFeatured', { isFeatured });
+      query.andWhere("product.isFeatured = :isFeatured", { isFeatured });
     }
 
     switch (sortBy) {
-      case 'price_asc':
-        query.orderBy('product.price', 'ASC');
+      case "price_asc":
+        query.orderBy("product.price", "ASC");
         break;
-      case 'price_desc':
-        query.orderBy('product.price', 'DESC');
+      case "price_desc":
+        query.orderBy("product.price", "DESC");
         break;
-      case 'popular':
-        query.orderBy('product.soldCount', 'DESC');
+      case "popular":
+        query.orderBy("product.soldCount", "DESC");
         break;
       default:
-        query.orderBy('product.createdAt', 'DESC');
+        query.orderBy("product.createdAt", "DESC");
     }
 
     const total = await query.getCount();
@@ -102,9 +114,9 @@ export class ProductsService {
   async findOne(id: string) {
     const product = await this.productsRepository.findOne({
       where: { id },
-      relations: ['category', 'images', 'variants'],
+      relations: ["category", "images", "variants"],
     });
-    if (!product) throw new NotFoundException('Product not found');
+    if (!product) throw new NotFoundException("Product not found");
     return product;
   }
 
@@ -112,9 +124,9 @@ export class ProductsService {
     const product = await this.findOne(productId);
     return this.productsRepository.find({
       where: { categoryId: product.categoryId, isAvailable: true },
-      relations: ['images'],
+      relations: ["images"],
       take: limit,
-      order: { soldCount: 'DESC' },
+      order: { soldCount: "DESC" },
     });
   }
 
@@ -206,13 +218,17 @@ export class ProductsService {
   async delete(id: string) {
     const product = await this.findOne(id);
     await this.productsRepository.remove(product);
-    return { message: 'Product deleted successfully' };
+    return { message: "Product deleted successfully" };
   }
 
   async getDashboardStats() {
     const total = await this.productsRepository.count();
-    const available = await this.productsRepository.count({ where: { isAvailable: true } });
-    const featured = await this.productsRepository.count({ where: { isFeatured: true } });
+    const available = await this.productsRepository.count({
+      where: { isAvailable: true },
+    });
+    const featured = await this.productsRepository.count({
+      where: { isFeatured: true },
+    });
     return { total, available, featured };
   }
 }
