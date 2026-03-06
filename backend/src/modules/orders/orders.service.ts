@@ -92,6 +92,27 @@ export class OrdersService {
     );
 
     await this.orderItemsRepository.save(orderItems);
+
+    // Reduce stock for each product/variant
+    for (const item of cartItems) {
+      if (item.variantId && item.variant) {
+        await this.productsRepository.manager
+          .getRepository("product_variants")
+          .decrement({ id: item.variantId }, "stockQuantity", item.quantity);
+      }
+      // Always reduce the product-level stock too
+      await this.productsRepository.decrement(
+        { id: item.productId },
+        "stockQuantity",
+        item.quantity,
+      );
+      await this.productsRepository.increment(
+        { id: item.productId },
+        "soldCount",
+        item.quantity,
+      );
+    }
+
     await this.cartRepository.delete({ userId });
 
     return this.findOne(savedOrder.id);

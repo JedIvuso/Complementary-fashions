@@ -44,6 +44,14 @@ export const routes: Routes = [
       ),
   },
   {
+    path: "orders/:id",
+    canActivate: [authGuard],
+    loadComponent: () =>
+      import("./features/orders/order-detail.component").then(
+        (m) => m.OrderDetailComponent,
+      ),
+  },
+  {
     path: "favorites",
     canActivate: [authGuard],
     loadComponent: () =>

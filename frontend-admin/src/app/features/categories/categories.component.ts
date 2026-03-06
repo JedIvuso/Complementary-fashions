@@ -20,13 +20,28 @@ import { environment } from "../../../environments/environment";
         </button>
       </div>
 
+      <!-- Search -->
+      <div style="margin-bottom:20px;max-width:320px">
+        <div class="search-box">
+          <span class="search-icon">🔍</span>
+          <input
+            class="search-input"
+            [(ngModel)]="search"
+            placeholder="Search categories…"
+          />
+          @if (search) {
+            <button class="clear-btn" (click)="search = ''">✕</button>
+          }
+        </div>
+      </div>
+
       <div class="categories-grid">
         @if (loading()) {
           @for (i of [1, 2, 3, 4, 5, 6]; track i) {
             <div class="skeleton" style="height:200px;border-radius:12px"></div>
           }
         }
-        @for (cat of categories(); track cat.id) {
+        @for (cat of filteredCategories(); track cat.id) {
           <div class="cat-card card">
             <div class="cat-image">
               @if (cat.image) {
@@ -169,6 +184,36 @@ import { environment } from "../../../environments/environment";
   `,
   styles: [
     `
+      .search-box {
+        position: relative;
+        display: flex;
+        align-items: center;
+      }
+      .search-icon {
+        position: absolute;
+        left: 12px;
+        font-size: 0.9rem;
+        pointer-events: none;
+      }
+      .search-input {
+        width: 100%;
+        padding: 8px 36px;
+        border: 1px solid var(--color-border);
+        border-radius: 8px;
+        background: var(--color-surface);
+        color: var(--color-text);
+        font-size: 0.875rem;
+        font-family: var(--font-body);
+      }
+      .clear-btn {
+        position: absolute;
+        right: 10px;
+        background: none;
+        border: none;
+        cursor: pointer;
+        color: var(--color-text-muted);
+        font-size: 0.875rem;
+      }
       .categories-grid {
         display: grid;
         grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
@@ -239,7 +284,15 @@ export class AdminCategoriesComponent implements OnInit {
 
   form: any = this.emptyForm();
 
+  search = "";
+
   constructor(private api: ApiService) {}
+
+  filteredCategories() {
+    if (!this.search.trim()) return this.categories();
+    const q = this.search.toLowerCase();
+    return this.categories().filter((c) => c.name?.toLowerCase().includes(q));
+  }
 
   ngOnInit() {
     this.load();
@@ -291,55 +344,16 @@ export class AdminCategoriesComponent implements OnInit {
   onImageSelected(event: any) {
     const file = event.target.files[0];
     if (!file) return;
-
-    // Log file details for debugging
-    console.log("Selected file:", {
-      name: file.name,
-      type: file.type,
-      size: file.size,
-    });
-
-    const allowedTypes = [
-      "image/jpeg",
-      "image/jpg",
-      "image/png",
-      "image/webp",
-      "image/gif",
-      "image/jfif",
-      "image/pjpeg",
-    ];
-
-    const isAllowedType = allowedTypes.includes(file.type);
-
-    const allowedExtensions = /\.(jpe?g|png|webp|gif|jfif)$/i;
-    const hasAllowedExt = allowedExtensions.test(file.name);
-
-    if (!isAllowedType && !hasAllowedExt) {
-      alert("Please select an image file (JPEG, PNG, WEBP, GIF, or JFIF)");
-      return;
-    }
-
-    if (file.size > 10 * 1024 * 1024) {
-      alert("File size must be less than 10MB");
-      return;
-    }
-
     this.uploading.set(true);
     const fd = new FormData();
     fd.append("file", file);
-
     this.api.upload("/uploads/image", fd).subscribe({
       next: (res: any) => {
-        console.log("Upload response:", res);
         this.form.image = res.url;
         this.uploading.set(false);
       },
-      error: (err) => {
-        console.error("Upload failed:", err);
-        alert(
-          "Upload failed: " +
-            (err.error?.message || err.message || "Unknown error"),
-        );
+      error: () => {
+        alert("Upload failed");
         this.uploading.set(false);
       },
     });
@@ -374,15 +388,8 @@ export class AdminCategoriesComponent implements OnInit {
 
   resolveUrl(url: string) {
     if (!url) return "";
-
-    if (url.startsWith("http")) {
-      return url;
-    }
-
-    if (url.startsWith("/uploads")) {
-      return `${environment.apiUrl.replace("/api", "")}${url}`;
-    }
-
-    return url;
+    return url.startsWith("http")
+      ? url
+      : `${environment.apiUrl.replace("/api", "")}${url}`;
   }
 }

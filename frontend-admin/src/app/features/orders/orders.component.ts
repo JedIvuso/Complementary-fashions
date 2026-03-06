@@ -13,25 +13,94 @@ import { environment } from "../../../environments/environment";
       <div class="page-title-bar">
         <div>
           <h1 class="page-title">Orders</h1>
-          <p class="page-sub">{{ total() }} total orders</p>
+          <p class="page-sub">
+            {{ filteredOrders().length }} of {{ total() }} orders
+          </p>
         </div>
-        <div style="display:flex;gap:10px">
-          <a [href]="exportUrl()" class="btn btn-ghost btn-sm">⬇️ Export CSV</a>
-        </div>
+        <button class="btn btn-ghost btn-sm" (click)="exportCsv()">
+          ⬇️ Export CSV
+        </button>
       </div>
 
-      <!-- Status filter tabs -->
-      <div class="status-tabs">
-        @for (tab of statusTabs; track tab.value) {
-          <button
-            class="status-tab"
-            [class.active]="statusFilter === tab.value"
-            (click)="setStatus(tab.value)"
+      <!-- Filters row -->
+      <div class="filters-row">
+        <!-- Search -->
+        <div class="search-box">
+          <span class="search-icon">🔍</span>
+          <input
+            class="search-input"
+            [(ngModel)]="search"
+            placeholder="Search order # or customer…"
+          />
+          @if (search) {
+            <button class="clear-btn" (click)="clearSearch()">✕</button>
+          }
+        </div>
+
+        <!-- Status filter -->
+        <div class="filter-group">
+          <label class="filter-label">Status</label>
+          <select
+            class="filter-select"
+            [(ngModel)]="statusFilter"
+            (ngModelChange)="onFiltersChange()"
           >
-            {{ tab.label }}
+            <option value="">All Statuses</option>
+            <option value="pending">⏳ Pending</option>
+            <option value="paid">✅ Paid</option>
+            <option value="processing">🔧 Processing</option>
+            <option value="shipped">🚚 Shipped</option>
+            <option value="delivered">📦 Delivered</option>
+            <option value="cancelled">❌ Cancelled</option>
+          </select>
+        </div>
+
+        <!-- Payment method filter -->
+        <div class="filter-group">
+          <label class="filter-label">Payment Method</label>
+          <select
+            class="filter-select"
+            [(ngModel)]="paymentFilter"
+            (ngModelChange)="onFiltersChange()"
+          >
+            <option value="">All Methods</option>
+            <option value="stk">📱 STK Push</option>
+            <option value="paybill">🏦 Paybill</option>
+            <option value="till">🏪 Till Number</option>
+            <option value="send">📞 Send Money</option>
+            <option value="cod">🚚 Pay on Delivery</option>
+            <option value="later">⏳ Pay Later</option>
+          </select>
+        </div>
+
+        <!-- Clear all -->
+        @if (statusFilter || paymentFilter || search) {
+          <button
+            class="btn btn-ghost btn-sm clear-all-btn"
+            (click)="clearAllFilters()"
+          >
+            ✕ Clear filters
           </button>
         }
       </div>
+
+      <!-- Active filter chips -->
+      @if (statusFilter || paymentFilter) {
+        <div class="active-chips">
+          @if (statusFilter) {
+            <span class="chip">
+              Status: {{ getStatusLabel(statusFilter) }}
+              <button (click)="statusFilter = ''; onFiltersChange()">✕</button>
+            </span>
+          }
+          @if (paymentFilter) {
+            <span class="chip">
+              Payment: {{ getPaymentMethodLabel(paymentFilter) }}
+              <button (click)="paymentFilter = ''; onFiltersChange()">✕</button>
+            </span>
+          }
+        </div>
+      }
 
       <div class="card">
         <div class="table-wrapper">
@@ -41,6 +110,7 @@ import { environment } from "../../../environments/environment";
                 <th>Order #</th>
                 <th>Customer</th>
                 <th>Items</th>
+                <th>Payment</th>
                 <th>Total</th>
                 <th>Status</th>
                 <th>Date</th>
@@ -51,7 +121,7 @@ import { environment } from "../../../environments/environment";
               @if (loading()) {
                 @for (i of [1, 2, 3, 4, 5]; track i) {
                   <tr>
-                    <td colspan="7">
+                    <td colspan="8">
                       <div
                         class="skeleton"
                         style="height:18px;margin:6px 0"
@@ -60,7 +130,7 @@ import { environment } from "../../../environments/environment";
                   </tr>
                 }
               }
-              @for (order of orders(); track order.id) {
+              @for (order of filteredOrders(); track order.id) {
                 <tr>
                   <td>
                     <span class="order-num">{{ order.orderNumber }}</span>
@@ -78,11 +148,6 @@ import { environment } from "../../../environments/environment";
                     </div>
                   </td>
                   <td>{{ order.items?.length || 0 }} item(s)</td>
-                  <td
-                    style="font-family:var(--font-display);color:var(--color-accent);font-weight:600"
-                  >
-                    KSh {{ order.totalAmount | number: "1.0-0" }}
-                  </td>
                   <td>
                     <span
                       class="pay-method-badge"
@@ -92,6 +157,11 @@ import { environment } from "../../../environments/environment";
                     >
                       {{ getPaymentMethodLabel(order.selectedPaymentMethod) }}
                     </span>
+                  </td>
+                  <td
+                    style="font-family:var(--font-display);color:var(--color-accent);font-weight:600"
+                  >
+                    KSh {{ order.totalAmount | number: "1.0-0" }}
                   </td>
                   <td>
                     <select
@@ -123,13 +193,20 @@ import { environment } from "../../../environments/environment";
                   </td>
                 </tr>
               }
-              @if (!loading() && !orders().length) {
+              @if (!loading() && !filteredOrders().length) {
                 <tr>
-                  <td
-                    colspan="7"
-                    style="text-align:center;padding:48px;color:var(--color-text-muted)"
-                  >
-                    No orders found
+                  <td colspan="8" style="text-align:center;padding:48px">
+                    <div style="color:var(--color-text-muted)">
+                      <div style="font-size:2rem;margin-bottom:8px">🔍</div>
+                      <div>No orders match your filters</div>
+                      <button
+                        class="btn btn-ghost btn-sm"
+                        style="margin-top:12px"
+                        (click)="clearAllFilters()"
+                      >
+                        Clear filters
+                      </button>
+                    </div>
                   </td>
                 </tr>
               }
@@ -196,6 +273,36 @@ import { environment } from "../../../environments/environment";
             </div>
 
             <div class="order-detail">
+              <!-- Payment Method -->
+              <div class="detail-section">
+                <h4>Payment Method</h4>
+                <div
+                  class="payment-method-detail"
+                  [ngClass]="
+                    getPaymentMethodClass(
+                      selectedOrder()?.selectedPaymentMethod
+                    )
+                  "
+                >
+                  <span class="pm-label">{{
+                    getPaymentMethodLabel(
+                      selectedOrder()?.selectedPaymentMethod
+                    )
+                  }}</span>
+                  @if (selectedOrder()?.selectedPaymentMethod === "cod") {
+                    <p class="pm-note">
+                      💡 Collect cash on delivery, then mark as Paid.
+                    </p>
+                  }
+                  @if (selectedOrder()?.selectedPaymentMethod === "later") {
+                    <p class="pm-note">
+                      💡 Follow up before shipping and mark as Paid once
+                      received.
+                    </p>
+                  }
+                </div>
+              </div>
+
               <!-- Delivery Info -->
               <div class="detail-section">
                 <h4>Delivery Details</h4>
@@ -222,36 +329,11 @@ import { environment } from "../../../environments/environment";
                       ><span>{{ selectedOrder()?.deliveryCity }}</span>
                     </div>
                   }
-                </div>
-              </div>
-
-              <!-- Payment Method -->
-              <div class="detail-section">
-                <h4>Payment Method</h4>
-                <div
-                  class="payment-method-detail"
-                  [ngClass]="
-                    getPaymentMethodClass(
-                      selectedOrder()?.selectedPaymentMethod
-                    )
-                  "
-                >
-                  <span class="pm-label">{{
-                    getPaymentMethodLabel(
-                      selectedOrder()?.selectedPaymentMethod
-                    )
-                  }}</span>
-                  @if (selectedOrder()?.selectedPaymentMethod === "cod") {
-                    <p class="pm-note">
-                      💡 Collect cash from the customer when you deliver this
-                      order, then mark it as <strong>Paid</strong>.
-                    </p>
-                  }
-                  @if (selectedOrder()?.selectedPaymentMethod === "later") {
-                    <p class="pm-note">
-                      💡 This customer has not paid yet. Follow up before
-                      shipping and mark as <strong>Paid</strong> once received.
-                    </p>
+                  @if (selectedOrder()?.notes) {
+                    <div style="grid-column:1/-1">
+                      <span class="detail-label">Notes</span
+                      ><span>{{ selectedOrder()?.notes }}</span>
+                    </div>
                   }
                 </div>
               </div>
@@ -269,16 +351,32 @@ import { environment } from "../../../environments/environment";
                     </div>
                     <div style="flex:1">
                       <div style="font-weight:500">{{ item.productName }}</div>
-                      @if (item.selectedSize) {
-                        <small class="badge badge-muted">{{
-                          item.selectedSize
-                        }}</small>
-                      }
+                      <div
+                        style="font-size:0.8125rem;color:var(--color-text-muted);margin-top:2px"
+                      >
+                        @if (item.selectedSize) {
+                          <span class="badge badge-muted">{{
+                            item.selectedSize
+                          }}</span>
+                        }
+                        @if (item.selectedColor) {
+                          <span class="badge badge-muted">{{
+                            item.selectedColor
+                          }}</span>
+                        }
+                      </div>
+                      <div
+                        style="font-size:0.8125rem;color:var(--color-text-muted)"
+                      >
+                        KSh {{ item.unitPrice | number: "1.0-0" }} each
+                      </div>
                     </div>
                     <div style="text-align:right">
-                      <div>x{{ item.quantity }}</div>
+                      <div style="color:var(--color-text-muted)">
+                        × {{ item.quantity }}
+                      </div>
                       <div
-                        style="color:var(--color-accent);font-family:var(--font-display)"
+                        style="color:var(--color-accent);font-family:var(--font-display);font-weight:600"
                       >
                         KSh {{ item.totalPrice | number: "1.0-0" }}
                       </div>
@@ -324,39 +422,120 @@ import { environment } from "../../../environments/environment";
   `,
   styles: [
     `
-      .status-tabs {
+      .filters-row {
         display: flex;
-        gap: 4px;
-        margin-bottom: 20px;
-        background: var(--color-surface);
-        padding: 6px;
-        border-radius: 10px;
-        border: 1px solid var(--color-border);
-        width: fit-content;
+        align-items: flex-end;
+        gap: 12px;
+        margin-bottom: 12px;
         flex-wrap: wrap;
       }
-      .status-tab {
-        padding: 6px 14px;
-        border-radius: 7px;
-        border: none;
-        background: transparent;
-        cursor: pointer;
-        font-size: 0.8125rem;
-        font-family: var(--font-body);
-        color: var(--color-text-secondary);
-        transition: all 0.2s;
+      .search-box {
+        position: relative;
+        display: flex;
+        align-items: center;
+        min-width: 260px;
       }
-      .status-tab.active {
-        background: var(--color-accent);
-        color: white;
+      .search-icon {
+        position: absolute;
+        left: 12px;
+        font-size: 0.9rem;
+        pointer-events: none;
+      }
+      .search-input {
+        width: 100%;
+        padding: 9px 36px;
+        border: 1px solid var(--color-border);
+        border-radius: 8px;
+        background: var(--color-surface);
+        color: var(--color-text);
+        font-size: 0.875rem;
+        font-family: var(--font-body);
+        height: 38px;
+      }
+      .clear-btn {
+        position: absolute;
+        right: 10px;
+        background: none;
+        border: none;
+        cursor: pointer;
+        color: var(--color-text-muted);
+        font-size: 0.875rem;
+      }
+      .filter-group {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+      .filter-label {
+        font-size: 0.7rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: var(--color-text-muted);
+      }
+      .filter-select {
+        padding: 0 12px;
+        height: 38px;
+        border: 1px solid var(--color-border);
+        border-radius: 8px;
+        background: var(--color-surface);
+        color: var(--color-text);
+        font-size: 0.875rem;
+        font-family: var(--font-body);
+        cursor: pointer;
+        min-width: 170px;
+      }
+      .filter-select:focus {
+        outline: none;
+        border-color: var(--color-accent);
+      }
+      .clear-all-btn {
+        align-self: flex-end;
+      }
+      .active-chips {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        margin-bottom: 16px;
+      }
+      .chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 4px 10px 4px 12px;
+        background: var(--color-accent-light, #f3ece7);
+        color: var(--color-accent);
+        border-radius: 20px;
+        font-size: 0.8125rem;
         font-weight: 500;
       }
-      .status-tab:hover:not(.active) {
-        background: var(--color-surface-2);
+      .chip button {
+        background: none;
+        border: none;
+        cursor: pointer;
+        color: var(--color-accent);
+        font-size: 0.8rem;
+        padding: 0;
+        line-height: 1;
+        opacity: 0.7;
+      }
+      .chip button:hover {
+        opacity: 1;
       }
       .order-num {
         font-weight: 600;
         color: var(--color-accent);
+        font-size: 0.8125rem;
+      }
+      .status-select {
+        padding: 4px 8px;
+        border-radius: 6px;
+        border: 1px solid var(--color-border);
+        background: var(--color-surface);
+        color: var(--color-text);
+        font-family: var(--font-body);
+        font-size: 0.8125rem;
+        cursor: pointer;
       }
       .pay-method-badge {
         display: inline-block;
@@ -378,14 +557,8 @@ import { environment } from "../../../environments/environment";
         background: #d1fae5;
         color: #065f46;
       }
-      .pay-method-paybill {
-        background: #dbeafe;
-        color: #1e40af;
-      }
-      .pay-method-till {
-        background: #dbeafe;
-        color: #1e40af;
-      }
+      .pay-method-paybill,
+      .pay-method-till,
       .pay-method-send {
         background: #dbeafe;
         color: #1e40af;
@@ -393,16 +566,6 @@ import { environment } from "../../../environments/environment";
       .pay-method-unknown {
         background: var(--color-surface-2);
         color: var(--color-text-muted);
-      }
-      .status-select {
-        padding: 4px 8px;
-        border-radius: 6px;
-        border: 1px solid var(--color-border);
-        background: var(--color-surface);
-        color: var(--color-text);
-        font-family: var(--font-body);
-        font-size: 0.8125rem;
-        cursor: pointer;
       }
       .detail-section {
         margin-bottom: 24px;
@@ -414,44 +577,6 @@ import { environment } from "../../../environments/environment";
         text-transform: uppercase;
         color: var(--color-text-muted);
         margin-bottom: 12px;
-      }
-      .payment-method-detail {
-        padding: 14px 16px;
-        border-radius: 10px;
-        margin-top: 8px;
-      }
-      .payment-method-detail.pay-method-cod {
-        background: #fef3c7;
-        border: 1px solid #fde68a;
-      }
-      .payment-method-detail.pay-method-later {
-        background: #ede9fe;
-        border: 1px solid #ddd6fe;
-      }
-      .payment-method-detail.pay-method-stk {
-        background: #d1fae5;
-        border: 1px solid #a7f3d0;
-      }
-      .payment-method-detail.pay-method-paybill,
-      .payment-method-detail.pay-method-till,
-      .payment-method-detail.pay-method-send {
-        background: #dbeafe;
-        border: 1px solid #bfdbfe;
-      }
-      .payment-method-detail.pay-method-unknown {
-        background: var(--color-surface-2);
-        border: 1px solid var(--color-border);
-      }
-      .pm-label {
-        font-weight: 600;
-        font-size: 0.9375rem;
-        display: block;
-        margin-bottom: 6px;
-      }
-      .pm-note {
-        font-size: 0.8125rem;
-        line-height: 1.5;
-        margin: 0;
       }
       .detail-grid {
         display: grid;
@@ -510,6 +635,44 @@ import { environment } from "../../../environments/environment";
         padding-top: 10px;
         margin-top: 4px;
       }
+      .payment-method-detail {
+        padding: 14px 16px;
+        border-radius: 10px;
+        margin-top: 8px;
+      }
+      .payment-method-detail.pay-method-cod {
+        background: #fef3c7;
+        border: 1px solid #fde68a;
+      }
+      .payment-method-detail.pay-method-later {
+        background: #ede9fe;
+        border: 1px solid #ddd6fe;
+      }
+      .payment-method-detail.pay-method-stk {
+        background: #d1fae5;
+        border: 1px solid #a7f3d0;
+      }
+      .payment-method-detail.pay-method-paybill,
+      .payment-method-detail.pay-method-till,
+      .payment-method-detail.pay-method-send {
+        background: #dbeafe;
+        border: 1px solid #bfdbfe;
+      }
+      .payment-method-detail.pay-method-unknown {
+        background: var(--color-surface-2);
+        border: 1px solid var(--color-border);
+      }
+      .pm-label {
+        font-weight: 600;
+        font-size: 0.9375rem;
+        display: block;
+        margin-bottom: 4px;
+      }
+      .pm-note {
+        font-size: 0.8125rem;
+        line-height: 1.5;
+        margin: 0;
+      }
     `,
   ],
 })
@@ -518,22 +681,14 @@ export class AdminOrdersComponent implements OnInit {
   loading = signal(true);
   selectedOrder = signal<any>(null);
   statusFilter = "";
+  paymentFilter = "";
+  search = "";
   page = signal(1);
   total = signal(0);
   totalPages = signal(1);
   limit = 20;
 
-  statusTabs = [
-    { label: "All", value: "" },
-    { label: "Pending", value: "pending" },
-    { label: "Paid", value: "paid" },
-    { label: "Shipped", value: "shipped" },
-    { label: "Delivered", value: "delivered" },
-    { label: "Cancelled", value: "cancelled" },
-  ];
-
   constructor(private api: ApiService) {}
-
   ngOnInit() {
     this.load();
   }
@@ -541,8 +696,6 @@ export class AdminOrdersComponent implements OnInit {
   load() {
     this.loading.set(true);
     const params: any = { page: this.page(), limit: this.limit };
-    if (this.statusFilter) params.status = this.statusFilter;
-
     this.api.get<any>("/orders", params).subscribe({
       next: (res) => {
         this.orders.set(res.data);
@@ -551,6 +704,73 @@ export class AdminOrdersComponent implements OnInit {
         this.loading.set(false);
       },
       error: () => this.loading.set(false),
+    });
+  }
+
+  filteredOrders() {
+    let list = this.orders();
+    if (this.statusFilter) {
+      list = list.filter((o) => o.status === this.statusFilter);
+    }
+    if (this.paymentFilter) {
+      list = list.filter((o) => o.selectedPaymentMethod === this.paymentFilter);
+    }
+    if (this.search.trim()) {
+      const q = this.search.toLowerCase();
+      list = list.filter(
+        (o) =>
+          o.orderNumber?.toLowerCase().includes(q) ||
+          o.deliveryFullName?.toLowerCase().includes(q) ||
+          o.deliveryEmail?.toLowerCase().includes(q),
+      );
+    }
+    return list;
+  }
+
+  onFiltersChange() {
+    /* filteredOrders() is computed on every change detection */
+  }
+  clearSearch() {
+    this.search = "";
+  }
+  clearAllFilters() {
+    this.search = "";
+    this.statusFilter = "";
+    this.paymentFilter = "";
+  }
+
+  updateStatus(orderId: string, event: any) {
+    const status = event.target.value;
+    this.api.put(`/orders/${orderId}/status`, { status }).subscribe({
+      next: () => this.load(),
+      error: () => alert("Failed to update status"),
+    });
+  }
+
+  viewOrder(order: any) {
+    this.selectedOrder.set(order);
+  }
+
+  exportCsv() {
+    this.api.get<any>("/orders/export-data").subscribe({
+      next: (orders: any[]) => {
+        const headers =
+          "Order Number,Date,Customer,Email,Phone,Payment Method,Status,Subtotal,Delivery,Total,Items\n";
+        const rows = orders
+          .map(
+            (o) =>
+              `${o.orderNumber},${new Date(o.createdAt).toLocaleDateString()},${o.deliveryFullName},${o.deliveryEmail},${o.deliveryPhone},${o.selectedPaymentMethod || ""},${o.status},${o.subtotal},${o.deliveryFee},${o.totalAmount},${o.items?.length || 0}`,
+          )
+          .join("\n");
+        const blob = new Blob([headers + rows], { type: "text/csv" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "orders.csv";
+        a.click();
+        URL.revokeObjectURL(url);
+      },
+      error: () => alert("Export failed"),
     });
   }
 
@@ -578,22 +798,16 @@ export class AdminOrdersComponent implements OnInit {
     return classes[method] || "pay-method-unknown";
   }
 
-  setStatus(status: string) {
-    this.statusFilter = status;
-    this.page.set(1);
-    this.load();
-  }
-
-  updateStatus(orderId: string, event: any) {
-    const status = event.target.value;
-    this.api.put(`/orders/${orderId}/status`, { status }).subscribe({
-      next: () => this.load(),
-      error: () => alert("Failed to update status"),
-    });
-  }
-
-  viewOrder(order: any) {
-    this.selectedOrder.set(order);
+  getStatusLabel(status: string): string {
+    const labels: any = {
+      pending: "Pending",
+      paid: "Paid",
+      processing: "Processing",
+      shipped: "Shipped",
+      delivered: "Delivered",
+      cancelled: "Cancelled",
+    };
+    return labels[status] || status;
   }
 
   getPrimaryImage(product: any) {
@@ -603,10 +817,6 @@ export class AdminOrdersComponent implements OnInit {
     return url.startsWith("http")
       ? url
       : `${environment.apiUrl.replace("/api", "")}${url}`;
-  }
-
-  exportUrl() {
-    return `${environment.apiUrl}/orders/export`;
   }
 
   goPage(p: number) {
