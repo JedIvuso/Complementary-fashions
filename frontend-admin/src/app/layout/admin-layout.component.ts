@@ -102,6 +102,14 @@ import { environment } from "../../environments/environment";
           <a [href]="publicUrl" target="_blank" class="nav-item view-store-btn">
             <span class="nav-icon">🌐</span> View Public Site
           </a>
+          <a
+            routerLink="/settings"
+            routerLinkActive="active"
+            class="nav-item"
+            [routerLinkActiveOptions]="{ exact: true }"
+          >
+            <span class="nav-icon">⚙️</span> Settings
+          </a>
           <button class="nav-item" (click)="auth.logout()">
             <span class="nav-icon">🚪</span> Logout
           </button>
@@ -257,13 +265,13 @@ export class AdminLayoutComponent {
     public themeService: ThemeService,
   ) {}
 
+  toggleSidebar() {
+    this.sidebarOpen.set(!this.sidebarOpen());
+  }
+
   getInitials() {
     const admin = this.auth.admin();
     if (!admin) return "A";
     return `${admin.firstName?.[0] || ""}${admin.lastName?.[0] || ""}`.toUpperCase();
-  }
-
-  toggleSidebar() {
-    this.sidebarOpen.update((v) => !v);
   }
 }

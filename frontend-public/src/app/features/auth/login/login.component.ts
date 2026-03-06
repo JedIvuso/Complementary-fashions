@@ -79,7 +79,11 @@ import { FavoritesService } from "../../../core/services/favorites.service";
 
             <p class="auth-switch">
               Don't have an account?
-              <a routerLink="/auth/register">Create one →</a>
+              <a routerLink="/auth/register">Create one →</a> <br /><a
+                routerLink="/auth/forgot-password"
+                style="color:var(--color-text-muted);font-size:0.875rem"
+                >Forgot your password?</a
+              >
             </p>
           </div>
         </div>
@@ -226,7 +230,7 @@ export class LoginComponent {
   ) {}
 
   togglePassword() {
-    this.showPassword.update((v) => !v);
+    this.showPassword.set(!this.showPassword());
   }
 
   login() {
@@ -239,7 +243,7 @@ export class LoginComponent {
     this.auth.login(this.email, this.password).subscribe({
       next: () => {
         this.toast.success("Welcome back!");
-        this.cart.getCart().subscribe();
+        this.cart.loadCart().subscribe();
         this.favs.load().subscribe();
         this.router.navigate(["/"]);
       },

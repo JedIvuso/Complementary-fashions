@@ -1,14 +1,14 @@
 import { Component, signal } from "@angular/core";
 import { CommonModule } from "@angular/common";
 import { FormsModule } from "@angular/forms";
-import { Router } from "@angular/router";
+import { Router, RouterLink } from "@angular/router";
 import { AdminAuthService } from "../../core/services/admin-auth.service";
 import { ThemeService } from "../../core/services/theme.service";
 
 @Component({
   selector: "app-admin-login",
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, RouterLink],
   template: `
     <div class="login-page">
       <div class="login-bg">
@@ -78,6 +78,13 @@ import { ThemeService } from "../../core/services/theme.service";
               Sign In →
             }
           </button>
+          <div style="text-align:center;margin-top:12px">
+            <a
+              routerLink="/forgot-password"
+              style="font-size:0.875rem;color:var(--color-text-muted);text-decoration:none"
+              >Forgot password?</a
+            >
+          </div>
         </form>
 
         <div class="login-footer">
@@ -235,6 +242,10 @@ export class AdminLoginComponent {
     if (authService.isLoggedIn()) router.navigate(["/dashboard"]);
   }
 
+  togglePassword() {
+    this.showPassword.set(!this.showPassword());
+  }
+
   submit() {
     if (!this.email || !this.password) {
       this.error.set("Please enter your email and password.");
@@ -252,9 +263,5 @@ export class AdminLoginComponent {
         );
       },
     });
-  }
-
-  togglePassword() {
-    this.showPassword.update((v) => !v);
   }
 }

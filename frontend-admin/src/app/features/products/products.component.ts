@@ -618,8 +618,12 @@ export class AdminProductsComponent implements OnInit {
         this.form.images.push(...res.map((r: any) => r.url));
         this.uploadingImages.set(false);
       },
-      error: () => {
-        alert("Image upload failed");
+      error: (err) => {
+        console.error("Upload failed:", err);
+        alert(
+          "Upload failed: " +
+            (err.error?.message || err.message || "Unknown error"),
+        );
         this.uploadingImages.set(false);
       },
     });

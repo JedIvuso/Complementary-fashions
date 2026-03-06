@@ -51,11 +51,11 @@ import { Router } from "@angular/router";
                   @for (img of product().images; track img.id) {
                     <button
                       class="thumb"
-                      [class.active]="selectedImage() === img.url"
-                      (click)="selectedImage.set(img.url)"
+                      [class.active]="selectedImage() === img.imageUrl"
+                      (click)="selectedImage.set(img.imageUrl)"
                     >
                       <img
-                        [src]="getImageUrl(img.url)"
+                        [src]="getImageUrl(img.imageUrl)"
                         [alt]="product().name"
                       />
                     </button>
@@ -106,10 +106,8 @@ import { Router } from "@angular/router";
                       <button
                         class="size-btn"
                         [class.selected]="selectedVariant()?.id === v.id"
-                        [class.unavailable]="
-                          !v.isAvailable || v.stockQuantity === 0
-                        "
-                        [disabled]="!v.isAvailable || v.stockQuantity === 0"
+                        [class.unavailable]="v.stockQuantity === 0"
+                        [disabled]="v.stockQuantity === 0"
                         (click)="selectedVariant.set(v)"
                       >
                         {{ v.size }}
@@ -125,9 +123,9 @@ import { Router } from "@angular/router";
               <div class="qty-section">
                 <div class="variant-label">Quantity</div>
                 <div class="qty-control">
-                  <button class="qty-btn" (click)="decreaseQty()">−</button>
+                  <button class="qty-btn" (click)="decrementQty()">−</button>
                   <span class="qty-val">{{ qty() }}</span>
-                  <button class="qty-btn" (click)="increaseQty()">+</button>
+                  <button class="qty-btn" (click)="incrementQty()">+</button>
                 </div>
               </div>
 
@@ -443,6 +441,13 @@ export class ProductDetailComponent implements OnInit {
   selectedImage = signal<string>("");
   selectedVariant = signal<any>(null);
   qty = signal(1);
+
+  incrementQty() {
+    this.qty.update((q) => q + 1);
+  }
+  decrementQty() {
+    this.qty.set(Math.max(1, this.qty() - 1));
+  }
   loading = signal(true);
   adding = signal(false);
   Math = Math;
@@ -465,7 +470,7 @@ export class ProductDetailComponent implements OnInit {
           this.product.set(p);
           const primary =
             p.images?.find((i: any) => i.isPrimary) || p.images?.[0];
-          this.selectedImage.set(primary?.url || "");
+          this.selectedImage.set(primary?.imageUrl || "");
           this.loading.set(false);
         },
         error: () => this.loading.set(false),
@@ -474,14 +479,6 @@ export class ProductDetailComponent implements OnInit {
         .getRelated(id)
         .subscribe((r) => this.related.set(r || []));
     });
-  }
-
-  decreaseQty() {
-    this.qty.set(Math.max(1, this.qty() - 1));
-  }
-
-  increaseQty() {
-    this.qty.update((q) => q + 1);
   }
 
   getImageUrl(url: string) {
@@ -506,7 +503,7 @@ export class ProductDetailComponent implements OnInit {
     }
     this.adding.set(true);
     this.cart
-      .addToCart(this.product().id, this.selectedVariant()?.id, this.qty())
+      .addItem(this.product().id, this.selectedVariant()?.id, this.qty())
       .subscribe({
         next: () => {
           this.toast.success("Added to cart!");

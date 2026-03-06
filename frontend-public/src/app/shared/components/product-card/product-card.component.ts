@@ -229,9 +229,11 @@ export class ProductCardComponent {
     const img =
       this.product?.images?.find((i: any) => i.isPrimary) ||
       this.product?.images?.[0];
-    if (!img?.url)
+    if (!img?.imageUrl)
       return "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjUwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iNDAwIiBoZWlnaHQ9IjUwMCIgZmlsbD0iI0YyRURFNiIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LXNpemU9IjQ4IiBmaWxsPSIjQzlBOTZFIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBkeT0iLjNlbSI+✦PC90ZXh0Pjwvc3ZnPg==";
-    return img.url.startsWith("http") ? img.url : `${this.apiBase}${img.url}`;
+    return img.imageUrl.startsWith("http")
+      ? img.imageUrl
+      : `${this.apiBase}${img.imageUrl}`;
   }
 
   isFavorited() {
@@ -256,8 +258,7 @@ export class ProductCardComponent {
       return;
     }
     this.adding.set(true);
-    this.cart.addToCart(this.product.id).subscribe({
-      // Changed from addItem
+    this.cart.addItem(this.product.id).subscribe({
       next: () => {
         this.toast.success("Added to cart!");
         this.adding.set(false);
