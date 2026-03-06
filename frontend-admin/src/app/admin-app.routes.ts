@@ -81,6 +81,13 @@ export const routes: Routes = [
             (m) => m.AdminSettingsComponent,
           ),
       },
+      {
+        path: "payment-settings",
+        loadComponent: () =>
+          import("./features/settings/admin-payment-settings.component").then(
+            (m) => m.AdminPaymentSettingsComponent,
+          ),
+      },
     ],
   },
   { path: "**", redirectTo: "" },

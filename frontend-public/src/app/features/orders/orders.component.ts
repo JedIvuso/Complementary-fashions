@@ -23,7 +23,7 @@ import { ApiService } from "../../core/services/api.service";
           @for (i of [1, 2, 3]; track i) {
             <div
               class="skeleton"
-              style="height: 120px; border-radius: 16px; margin-bottom: 16px;"
+              style="height: 140px; border-radius: 16px; margin-bottom: 16px;"
             ></div>
           }
         } @else if (!orders().length) {
@@ -76,27 +76,17 @@ import { ApiService } from "../../core/services/api.service";
                   <div class="order-total">
                     KSh {{ order.totalAmount | number: "1.0-0" }}
                   </div>
-
-                  <!-- Resume Checkout for pending unpaid orders -->
-                  @if (order.status === "pending") {
-                    <div class="resume-actions">
+                  @if (
+                    order.status === "pending" &&
+                    shouldShowCompletePayment(order)
+                  ) {
+                    <div class="resume-section">
                       <span class="resume-label">⚠ Payment pending</span>
                       <button
-                        class="btn btn-mpesa btn-sm"
-                        [disabled]="payingOrderId() === order.id"
-                        (click)="payWithMpesa(order)"
+                        class="btn btn-resume"
+                        (click)="openResumeModal(order)"
                       >
-                        {{
-                          payingOrderId() === order.id
-                            ? "Sending..."
-                            : "📱 Pay via M-Pesa"
-                        }}
-                      </button>
-                      <button
-                        class="btn btn-outline btn-sm"
-                        (click)="openManualPay(order)"
-                      >
-                        🏦 Other Payment
+                        Complete Payment →
                       </button>
                     </div>
                   }
@@ -108,74 +98,249 @@ import { ApiService } from "../../core/services/api.service";
       </div>
     </div>
 
-    <!-- Manual Payment Modal -->
-    @if (manualPayOrder()) {
-      <div class="modal-overlay" (click)="closeManualPay()">
+    <!-- Resume Payment Modal -->
+    @if (resumeOrder()) {
+      <div class="modal-overlay" (click)="closeModal()">
         <div class="modal-card" (click)="$event.stopPropagation()">
           <div class="modal-header">
-            <h2>Complete Your Payment</h2>
-            <button class="close-btn" (click)="closeManualPay()">✕</button>
+            <h2>Complete Payment</h2>
+            <button class="close-btn" (click)="closeModal()">✕</button>
           </div>
           <div class="modal-body">
-            <div class="order-summary-box">
-              <div class="summary-row">
+            <!-- Order info -->
+            <div class="order-box">
+              <div class="order-row">
                 <span>Order</span
-                ><strong>{{ manualPayOrder().orderNumber }}</strong>
+                ><strong>{{ resumeOrder().orderNumber }}</strong>
               </div>
-              <div class="summary-row total-row">
+              <div class="order-row total-row">
                 <span>Amount Due</span
                 ><strong
-                  >KSh
-                  {{ manualPayOrder().totalAmount | number: "1.0-0" }}</strong
+                  >KSh {{ resumeOrder().totalAmount | number: "1.0-0" }}</strong
                 >
               </div>
             </div>
-            <h3>Pay via M-Pesa Paybill</h3>
-            <div class="pay-steps">
-              <div class="pay-step">
-                <span class="step-num">1</span> Go to M-Pesa on your phone
-              </div>
-              <div class="pay-step">
-                <span class="step-num">2</span> Select
-                <strong>Lipa na M-Pesa → Paybill</strong>
-              </div>
-              <div class="pay-step">
-                <span class="step-num">3</span> Business No:
-                <strong class="highlight">522533</strong>
-              </div>
-              <div class="pay-step">
-                <span class="step-num">4</span> Account No:
-                <strong class="highlight">{{
-                  manualPayOrder().orderNumber
-                }}</strong>
-              </div>
-              <div class="pay-step">
-                <span class="step-num">5</span> Amount:
-                <strong class="highlight"
-                  >KSh
-                  {{ manualPayOrder().totalAmount | number: "1.0-0" }}</strong
-                >
-              </div>
-            </div>
-            <div class="confirm-section">
-              <p>Once paid, enter your M-Pesa confirmation code:</p>
+
+            @if (!modalStep()) {
+              <!-- Choose payment method -->
+              <p class="modal-label">How would you like to pay?</p>
+              @if (loadingSettings()) {
+                <div
+                  class="skeleton"
+                  style="height:160px;border-radius:10px"
+                ></div>
+              } @else {
+                <div class="modal-methods">
+                  @if (ps()?.mpesaStkEnabled) {
+                    <div
+                      class="modal-method"
+                      (click)="selectModalMethod('stk')"
+                    >
+                      <span>📱</span>
+                      <div>
+                        <strong>M-Pesa STK Push</strong>
+                        <p>Get a prompt on your phone</p>
+                      </div>
+                    </div>
+                  }
+                  @if (ps()?.paybillEnabled) {
+                    <div
+                      class="modal-method"
+                      (click)="selectModalMethod('paybill')"
+                    >
+                      <span>🏦</span>
+                      <div>
+                        <strong>Paybill {{ ps()?.paybillNumber }}</strong>
+                        <p>Manual M-Pesa paybill</p>
+                      </div>
+                    </div>
+                  }
+                  @if (ps()?.tillEnabled) {
+                    <div
+                      class="modal-method"
+                      (click)="selectModalMethod('till')"
+                    >
+                      <span>🏪</span>
+                      <div>
+                        <strong>Till {{ ps()?.tillNumber }}</strong>
+                        <p>Buy Goods</p>
+                      </div>
+                    </div>
+                  }
+                  @if (ps()?.sendMoneyEnabled) {
+                    <div
+                      class="modal-method"
+                      (click)="selectModalMethod('send')"
+                    >
+                      <span>📞</span>
+                      <div>
+                        <strong>Send Money</strong>
+                        <p>To {{ ps()?.sendMoneyPhone }}</p>
+                      </div>
+                    </div>
+                  }
+                  @if (ps()?.payOnDeliveryEnabled) {
+                    <div
+                      class="modal-method"
+                      (click)="selectModalMethod('cod')"
+                    >
+                      <span>🚚</span>
+                      <div>
+                        <strong>Pay on Delivery</strong>
+                        <p>Cash when delivered</p>
+                      </div>
+                    </div>
+                  }
+                  @if (ps()?.payLaterEnabled) {
+                    <div
+                      class="modal-method"
+                      (click)="selectModalMethod('later')"
+                    >
+                      <span>⏳</span>
+                      <div>
+                        <strong>Pay Later</strong>
+                        <p>Before shipping</p>
+                      </div>
+                    </div>
+                  }
+                </div>
+              }
+            }
+
+            @if (modalStep() === "stk-phone") {
+              <p class="modal-label">Enter your M-Pesa number</p>
               <input
                 class="form-input"
-                [(ngModel)]="mpesaCode"
-                placeholder="e.g. QKG7XXXXXXX"
-                style="text-transform: uppercase"
+                [(ngModel)]="stkPhone"
+                placeholder="e.g. 0712345678"
               />
-              @if (payError()) {
-                <div class="pay-error">{{ payError() }}</div>
-              }
               <button
                 class="btn btn-primary btn-full"
-                [disabled]="confirmingPayment()"
-                (click)="confirmManualPayment()"
+                [disabled]="payingStk()"
+                (click)="sendStkPush()"
               >
-                {{ confirmingPayment() ? "Confirming..." : "Confirm Payment" }}
+                {{ payingStk() ? "Sending..." : "Send M-Pesa Prompt" }}
               </button>
-            </div>
+            }
+
+            @if (modalStep() === "stk-waiting") {
+              <div class="stk-waiting">
+                <div class="spinner-lg"></div>
+                <p>
+                  Check your phone — <strong>{{ stkPhone }}</strong>
+                </p>
+                <p class="hint-text">Enter your PIN to confirm payment</p>
+              </div>
+            }
+
+            @if (modalStep() === "manual-steps") {
+              <div class="manual-pay-steps">
+                <p class="steps-title">How to pay:</p>
+                <div class="steps">
+                  <div class="step">
+                    <span class="step-n">1</span> Open M-Pesa on your phone
+                  </div>
+                  @if (modalMethod() === "paybill") {
+                    <div class="step">
+                      <span class="step-n">2</span> Lipa na M-Pesa →
+                      <strong>Paybill</strong>
+                    </div>
+                    <div class="step">
+                      <span class="step-n">3</span> Business No:
+                      <strong class="hi">{{ ps()?.paybillNumber }}</strong>
+                    </div>
+                    <div class="step">
+                      <span class="step-n">4</span> Account No:
+                      <strong class="hi">{{
+                        resumeOrder().orderNumber
+                      }}</strong>
+                    </div>
+                    <div class="step">
+                      <span class="step-n">5</span> Amount:
+                      <strong class="hi"
+                        >KSh
+                        {{
+                          resumeOrder().totalAmount | number: "1.0-0"
+                        }}</strong
+                      >
+                    </div>
+                  }
+                  @if (modalMethod() === "till") {
+                    <div class="step">
+                      <span class="step-n">2</span> Lipa na M-Pesa →
+                      <strong>Buy Goods</strong>
+                    </div>
+                    <div class="step">
+                      <span class="step-n">3</span> Till No:
+                      <strong class="hi">{{ ps()?.tillNumber }}</strong>
+                    </div>
+                    <div class="step">
+                      <span class="step-n">4</span> Amount:
+                      <strong class="hi"
+                        >KSh
+                        {{
+                          resumeOrder().totalAmount | number: "1.0-0"
+                        }}</strong
+                      >
+                    </div>
+                  }
+                  @if (modalMethod() === "send") {
+                    <div class="step">
+                      <span class="step-n">2</span> <strong>Send Money</strong>
+                    </div>
+                    <div class="step">
+                      <span class="step-n">3</span> Number:
+                      <strong class="hi">{{ ps()?.sendMoneyPhone }}</strong> ({{
+                        ps()?.sendMoneyName
+                      }})
+                    </div>
+                    <div class="step">
+                      <span class="step-n">4</span> Amount:
+                      <strong class="hi"
+                        >KSh
+                        {{
+                          resumeOrder().totalAmount | number: "1.0-0"
+                        }}</strong
+                      >
+                    </div>
+                  }
+                </div>
+                <label class="form-label" style="margin-top:14px"
+                  >M-Pesa Confirmation Code</label
+                >
+                <input
+                  class="form-input"
+                  [(ngModel)]="confirmCode"
+                  placeholder="e.g. QKG7XXXXXXX"
+                  style="text-transform:uppercase"
+                />
+                @if (confirmError()) {
+                  <div class="pay-error">{{ confirmError() }}</div>
+                }
+                <button
+                  class="btn btn-primary btn-full"
+                  [disabled]="confirmingPay()"
+                  (click)="submitConfirmCode()"
+                >
+                  {{ confirmingPay() ? "Confirming..." : "Confirm Payment" }}
+                </button>
+              </div>
+            }
+
+            @if (modalStep() === "done") {
+              <div class="done-state">
+                <div class="done-icon">{{ doneIcon() }}</div>
+                <h3>{{ doneTitle() }}</h3>
+                <p>{{ serverMessage() }}</p>
+                <button
+                  class="btn btn-primary"
+                  style="margin-top:16px;width:100%"
+                  (click)="closeModal()"
+                >
+                  Close
+                </button>
+              </div>
+            }
           </div>
         </div>
       </div>
@@ -210,8 +375,8 @@ import { ApiService } from "../../core/services/api.service";
       }
       .order-header {
         display: flex;
-        align-items: center;
         justify-content: space-between;
+        align-items: center;
         margin-bottom: 16px;
       }
       .order-number {
@@ -264,23 +429,23 @@ import { ApiService } from "../../core/services/api.service";
         display: flex;
         flex-direction: column;
         align-items: flex-end;
-        gap: 10px;
-      }
-      .order-summary-text {
-        color: var(--color-text-secondary);
-        font-size: 0.875rem;
-        align-self: center;
+        gap: 8px;
       }
       .order-total {
         font-family: var(--font-display);
         font-size: 1.25rem;
         color: var(--color-accent);
       }
-      .resume-actions {
+      .order-summary-text {
+        color: var(--color-text-secondary);
+        font-size: 0.875rem;
+        align-self: center;
+      }
+      .resume-section {
         display: flex;
         flex-direction: column;
         align-items: flex-end;
-        gap: 8px;
+        gap: 6px;
       }
       .resume-label {
         font-size: 0.8125rem;
@@ -294,27 +459,21 @@ import { ApiService } from "../../core/services/api.service";
         cursor: pointer;
         font-weight: 500;
         font-size: 0.875rem;
-      }
-      .btn-sm {
-        padding: 8px 16px;
-        font-size: 0.8125rem;
-      }
-      .btn-mpesa {
-        background: #4caf50;
-        color: white;
-      }
-      .btn-outline {
-        background: transparent;
-        border: 1.5px solid var(--color-border);
-        color: var(--color-text);
+        text-decoration: none;
       }
       .btn-primary {
         background: var(--color-accent);
         color: white;
       }
+      .btn-resume {
+        background: var(--color-accent);
+        color: white;
+        font-size: 0.875rem;
+      }
       .btn-full {
         width: 100%;
         margin-top: 12px;
+        text-align: center;
       }
       .btn:disabled {
         opacity: 0.6;
@@ -338,7 +497,7 @@ import { ApiService } from "../../core/services/api.service";
         background: var(--color-surface);
         border-radius: 16px;
         width: 100%;
-        max-width: 480px;
+        max-width: 460px;
         max-height: 90vh;
         overflow-y: auto;
       }
@@ -362,64 +521,63 @@ import { ApiService } from "../../core/services/api.service";
       .modal-body {
         padding: 20px 28px 28px;
       }
-      .order-summary-box {
+      .order-box {
         background: var(--color-bg);
         border-radius: 10px;
-        padding: 16px;
-        margin-bottom: 20px;
+        padding: 14px;
+        margin-bottom: 18px;
       }
-      .summary-row {
+      .order-row {
         display: flex;
         justify-content: space-between;
-        padding: 4px 0;
         font-size: 0.9375rem;
         color: var(--color-text-secondary);
+        padding: 3px 0;
       }
       .total-row {
-        font-size: 1.125rem;
         color: var(--color-text);
-        margin-top: 8px;
-        padding-top: 8px;
+        font-size: 1.1rem;
+        margin-top: 6px;
+        padding-top: 6px;
         border-top: 1px solid var(--color-border);
       }
-      h3 {
-        font-size: 1rem;
+      .modal-label {
+        font-size: 0.875rem;
         font-weight: 600;
-        margin-bottom: 14px;
+        margin-bottom: 12px;
       }
-      .pay-steps {
+      .modal-methods {
         display: flex;
         flex-direction: column;
         gap: 10px;
-        margin-bottom: 20px;
       }
-      .pay-step {
+      .modal-method {
         display: flex;
         align-items: center;
         gap: 12px;
-        font-size: 0.9375rem;
+        padding: 14px 16px;
+        border: 1.5px solid var(--color-border);
+        border-radius: 10px;
+        cursor: pointer;
+        transition: all 0.2s;
       }
-      .step-num {
-        width: 26px;
-        height: 26px;
-        background: var(--color-accent);
-        color: white;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 0.8125rem;
-        font-weight: 600;
+      .modal-method:hover {
+        border-color: var(--color-accent);
+        background: rgba(201, 112, 58, 0.04);
+      }
+      .modal-method span {
+        font-size: 1.5rem;
         flex-shrink: 0;
       }
-      .highlight {
-        color: var(--color-accent);
-        font-size: 1.05em;
-      }
-      .confirm-section p {
+      .modal-method strong {
         font-size: 0.9375rem;
-        color: var(--color-text-secondary);
-        margin-bottom: 10px;
+        font-weight: 600;
+        display: block;
+      }
+      .modal-method p {
+        font-size: 0.8125rem;
+        color: var(--color-text-muted);
+        margin: 0;
       }
       .form-input {
         width: 100%;
@@ -431,10 +589,85 @@ import { ApiService } from "../../core/services/api.service";
         font-size: 0.9375rem;
         box-sizing: border-box;
       }
+      /* STK waiting */
+      .stk-waiting {
+        text-align: center;
+        padding: 16px 0;
+      }
+      .spinner-lg {
+        width: 40px;
+        height: 40px;
+        border: 4px solid var(--color-border);
+        border-top-color: var(--color-accent);
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+        margin: 0 auto 14px;
+      }
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+      .hint-text {
+        font-size: 0.8125rem;
+        color: var(--color-text-muted);
+        margin-top: 6px;
+      }
+      /* Manual steps */
+      .steps-title {
+        font-size: 0.875rem;
+        font-weight: 600;
+        margin-bottom: 10px;
+      }
+      .steps {
+        display: flex;
+        flex-direction: column;
+        gap: 9px;
+      }
+      .step {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-size: 0.9375rem;
+      }
+      .step-n {
+        width: 24px;
+        height: 24px;
+        background: var(--color-accent);
+        color: white;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.75rem;
+        font-weight: 700;
+        flex-shrink: 0;
+      }
+      .hi {
+        color: var(--color-accent);
+      }
       .pay-error {
         color: #dc2626;
         font-size: 0.875rem;
-        margin: 8px 0;
+        margin: 8px 0 0;
+      }
+      .form-label {
+        display: block;
+        font-size: 0.8125rem;
+        font-weight: 500;
+        margin-bottom: 6px;
+      }
+      /* Done */
+      .done-state {
+        text-align: center;
+        padding: 16px 0;
+      }
+      .done-icon {
+        font-size: 3rem;
+        margin-bottom: 12px;
+      }
+      .done-state h3 {
+        margin-bottom: 8px;
       }
     `,
   ],
@@ -442,11 +675,17 @@ import { ApiService } from "../../core/services/api.service";
 export class OrdersComponent implements OnInit {
   orders = signal<any[]>([]);
   loading = signal(true);
-  payingOrderId = signal<string | null>(null);
-  manualPayOrder = signal<any>(null);
-  mpesaCode = "";
-  confirmingPayment = signal(false);
-  payError = signal("");
+  resumeOrder = signal<any>(null);
+  modalStep = signal("");
+  modalMethod = signal("");
+  ps = signal<any>(null);
+  loadingSettings = signal(true);
+  stkPhone = "";
+  confirmCode = "";
+  payingStk = signal(false);
+  confirmingPay = signal(false);
+  confirmError = signal("");
+  serverMessage = signal("");
 
   constructor(
     private ordersService: OrdersService,
@@ -461,63 +700,132 @@ export class OrdersComponent implements OnInit {
       },
       error: () => this.loading.set(false),
     });
+    this.api.get<any>("/payments/settings/public").subscribe({
+      next: (s) => {
+        this.ps.set(s);
+        this.loadingSettings.set(false);
+      },
+      error: () => this.loadingSettings.set(false),
+    });
   }
 
-  payWithMpesa(order: any) {
-    const phone = prompt("Enter your M-Pesa phone number (e.g. 0712345678):");
-    if (!phone) return;
-    this.payingOrderId.set(order.id);
+  openResumeModal(order: any) {
+    this.resumeOrder.set(order);
+    this.modalStep.set("");
+    this.modalMethod.set("");
+    this.confirmCode = "";
+    this.stkPhone = "";
+    this.confirmError.set("");
+  }
+
+  closeModal() {
+    this.resumeOrder.set(null);
+  }
+
+  selectModalMethod(method: string) {
+    this.modalMethod.set(method);
+    if (method === "stk") {
+      this.modalStep.set("stk-phone");
+    } else if (method === "cod" || method === "later") {
+      this.api
+        .post("/payments/confirm", {
+          orderId: this.resumeOrder().id,
+          mpesaCode: "N/A",
+          method,
+        })
+        .subscribe({
+          next: (res: any) => {
+            this.serverMessage.set(
+              res.message ||
+                (method === "cod"
+                  ? "Your order is confirmed. Have your payment ready when it arrives."
+                  : "Your order is confirmed. Please complete payment before it is shipped."),
+            );
+            this.modalStep.set("done");
+            this.refreshOrders();
+          },
+          error: () => {
+            this.serverMessage.set("Your order has been noted.");
+            this.modalStep.set("done");
+          },
+        });
+    } else {
+      this.modalStep.set("manual-steps");
+    }
+  }
+
+  sendStkPush() {
+    if (!this.stkPhone) return;
+    this.payingStk.set(true);
     this.api
-      .post(`/payments/mpesa/stk-push`, { orderId: order.id, phone })
-      .subscribe({
-        next: () => {
-          this.payingOrderId.set(null);
-          alert(
-            "M-Pesa prompt sent to your phone. Enter your PIN to complete payment.",
-          );
-        },
-        error: () => {
-          this.payingOrderId.set(null);
-          alert("M-Pesa request failed. Please try the manual payment option.");
-        },
-      });
-  }
-
-  openManualPay(order: any) {
-    this.manualPayOrder.set(order);
-    this.mpesaCode = "";
-    this.payError.set("");
-  }
-
-  closeManualPay() {
-    this.manualPayOrder.set(null);
-  }
-
-  confirmManualPayment() {
-    if (!this.mpesaCode.trim())
-      return this.payError.set("Please enter your M-Pesa confirmation code");
-    this.confirmingPayment.set(true);
-    this.api
-      .post("/payments/confirm", {
-        orderId: this.manualPayOrder().id,
-        mpesaCode: this.mpesaCode.trim().toUpperCase(),
+      .post("/payments/mpesa/stk-push", {
+        orderId: this.resumeOrder().id,
+        phone: this.stkPhone,
       })
       .subscribe({
         next: () => {
-          this.confirmingPayment.set(false);
-          this.closeManualPay();
-          // Refresh orders
-          this.ordersService.getMyOrders().subscribe((o) => this.orders.set(o));
-          alert("Payment confirmed! Your order is being processed.");
+          this.payingStk.set(false);
+          this.modalStep.set("stk-waiting");
         },
-        error: (err) => {
-          this.confirmingPayment.set(false);
-          this.payError.set(
-            err.error?.message ||
-              "Confirmation failed. Please contact support.",
-          );
+        error: () => {
+          this.payingStk.set(false);
+          alert("Failed to send STK push. Please try another method.");
         },
       });
+  }
+
+  submitConfirmCode() {
+    if (!this.confirmCode.trim()) {
+      this.confirmError.set("Please enter your confirmation code");
+      return;
+    }
+    this.confirmingPay.set(true);
+    this.confirmError.set("");
+    this.api
+      .post("/payments/confirm", {
+        orderId: this.resumeOrder().id,
+        mpesaCode: this.confirmCode.trim().toUpperCase(),
+        method: this.modalMethod(),
+      })
+      .subscribe({
+        next: (res: any) => {
+          this.confirmingPay.set(false);
+          this.serverMessage.set(
+            res.message || "Payment confirmed successfully.",
+          );
+          this.modalStep.set("done");
+          this.refreshOrders();
+        },
+        error: (err) => {
+          this.confirmingPay.set(false);
+          this.confirmError.set(err.error?.message || "Confirmation failed");
+        },
+      });
+  }
+
+  shouldShowCompletePayment(order: any): boolean {
+    // Pay on Delivery: no digital payment needed, hide the button permanently
+    if (order.selectedPaymentMethod === "cod") return false;
+    // Pay Later, no method yet, or any other method: keep button visible
+    return true;
+  }
+
+  doneIcon() {
+    const m = this.modalMethod();
+    if (m === "cod") return "🚚";
+    if (m === "later") return "⏳";
+    return "✅";
+  }
+
+  doneTitle() {
+    const m = this.modalMethod();
+    if (m === "cod") return "Order Confirmed!";
+    if (m === "later") return "Order Confirmed!";
+    return "Payment Confirmed!";
+  }
+
+  refreshOrders() {
+    this.ordersService.getMyOrders().subscribe((o) => this.orders.set(o));
   }
 
   getPrimaryImage(product: any) {

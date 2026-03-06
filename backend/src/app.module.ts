@@ -29,6 +29,7 @@ import { Payment } from "./modules/payments/payment.entity";
 import { Favorite } from "./modules/favorites/favorite.entity";
 import { Banner } from "./modules/banners/banner.entity";
 import { AboutContent } from "./modules/about/about.entity";
+import { PaymentSettings } from "./modules/payments/payment-settings.entity";
 
 @Module({
   imports: [
@@ -56,6 +57,7 @@ import { AboutContent } from "./modules/about/about.entity";
           Favorite,
           Banner,
           AboutContent,
+          PaymentSettings,
         ],
         synchronize: configService.get("NODE_ENV") !== "production",
         logging: configService.get("NODE_ENV") === "development",

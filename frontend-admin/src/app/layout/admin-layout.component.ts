@@ -110,6 +110,13 @@ import { environment } from "../../environments/environment";
           >
             <span class="nav-icon">⚙️</span> Settings
           </a>
+          <a
+            routerLink="/payment-settings"
+            routerLinkActive="active"
+            class="nav-item"
+          >
+            <span class="nav-icon">💳</span> Payment Settings
+          </a>
           <button class="nav-item" (click)="auth.logout()">
             <span class="nav-icon">🚪</span> Logout
           </button>
