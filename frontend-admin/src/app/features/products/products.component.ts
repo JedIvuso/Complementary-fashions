@@ -110,14 +110,8 @@ import { environment } from "../../../environments/environment";
                     KSh {{ product.price | number: "1.0-0" }}
                   </td>
                   <td>
-                    <span
-                      [class]="
-                        product.stockQuantity > 0
-                          ? 'badge badge-success'
-                          : 'badge badge-error'
-                      "
-                    >
-                      {{ product.stockQuantity }}
+                    <span [class]="getStockClass(product)">
+                      {{ getStockDisplay(product) }}
                     </span>
                   </td>
                   <td>
@@ -618,12 +612,8 @@ export class AdminProductsComponent implements OnInit {
         this.form.images.push(...res.map((r: any) => r.url));
         this.uploadingImages.set(false);
       },
-      error: (err) => {
-        console.error("Upload failed:", err);
-        alert(
-          "Upload failed: " +
-            (err.error?.message || err.message || "Unknown error"),
-        );
+      error: () => {
+        alert("Image upload failed");
         this.uploadingImages.set(false);
       },
     });
@@ -635,6 +625,18 @@ export class AdminProductsComponent implements OnInit {
   addVariant() {
     this.form.variants.push({ size: "", color: "", stockQuantity: 0 });
   }
+
+  getStockDisplay(product: any): string {
+    const qty = Math.max(0, product.stockQuantity || 0);
+    return qty.toString();
+  }
+
+  getStockClass(product: any): string {
+    const qty = Math.max(0, product.stockQuantity || 0);
+    if (qty === 0) return "badge badge-error";
+    if (qty <= 3) return "badge badge-warning";
+    return "badge badge-success";
+  }
   removeVariant(index: number) {
     this.form.variants.splice(index, 1);
   }
@@ -644,26 +646,10 @@ export class AdminProductsComponent implements OnInit {
       alert("Please fill in Name, Category and Price");
       return;
     }
-
     this.saving.set(true);
-
-    // Send as plain JSON — images are already uploaded separately
-    // and their URLs are stored in this.form.images
-    const payload = {
-      name: this.form.name,
-      description: this.form.description || "",
-      price: Number(this.form.price),
-      stockQuantity: Number(this.form.stockQuantity) || 0,
-      categoryId: this.form.categoryId,
-      isFeatured: this.form.isFeatured || false,
-      isAvailable: this.form.isAvailable !== false,
-      images: this.form.images || [],
-      variants: this.form.variants || [],
-    };
-
     const req = this.editing
-      ? this.api.put(`/products/${this.editing.id}`, payload)
-      : this.api.post("/products", payload);
+      ? this.api.put(`/products/${this.editing.id}`, this.form)
+      : this.api.post("/products", this.form);
 
     req.subscribe({
       next: () => {
@@ -671,16 +657,12 @@ export class AdminProductsComponent implements OnInit {
         this.closeModal();
         this.loadProducts();
       },
-      error: (err) => {
+      error: () => {
         this.saving.set(false);
-        alert(
-          "Failed to save product: " + (err.error?.message || "Unknown error"),
-        );
+        alert("Failed to save product");
       },
     });
   }
-
-  newImageFiles: File[] = [];
 
   toggleFeatured(product: any) {
     this.api

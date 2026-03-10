@@ -263,8 +263,13 @@ export class ProductCardComponent {
         this.toast.success("Added to cart!");
         this.adding.set(false);
       },
-      error: () => {
-        this.toast.error("Failed to add to cart");
+      error: (err) => {
+        // Add error parameter
+        console.error("Cart error:", err);
+        // Display the error message from the backend
+        const errorMessage =
+          err.error?.message || err.message || "Failed to add to cart";
+        this.toast.error(errorMessage);
         this.adding.set(false);
       },
     });

@@ -135,7 +135,7 @@ export class ProductsService {
       name: data.name,
       description: data.description,
       price: data.price,
-      stockQuantity: data.stockQuantity,
+      stockQuantity: Math.max(0, data.stockQuantity || 0),
       categoryId: data.categoryId,
       isFeatured: data.isFeatured || false,
       isAvailable: data.isAvailable !== false,
@@ -177,7 +177,10 @@ export class ProductsService {
       name: data.name ?? product.name,
       description: data.description ?? product.description,
       price: data.price ?? product.price,
-      stockQuantity: data.stockQuantity ?? product.stockQuantity,
+      stockQuantity:
+        data.stockQuantity !== undefined
+          ? Math.max(0, data.stockQuantity)
+          : product.stockQuantity,
       categoryId: data.categoryId ?? product.categoryId,
       isFeatured: data.isFeatured ?? product.isFeatured,
       isAvailable: data.isAvailable ?? product.isAvailable,

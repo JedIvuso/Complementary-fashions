@@ -7,6 +7,8 @@ import { OrderItem } from "./order-item.entity";
 import { CartItem } from "../cart/cart-item.entity";
 import { Product } from "../products/product.entity";
 import { PaymentSettings } from "../payments/payment-settings.entity";
+import { Admin } from "../admins/admin.entity";
+import { MailModule } from "src/mail/mail.module";
 
 @Module({
   imports: [
@@ -16,7 +18,9 @@ import { PaymentSettings } from "../payments/payment-settings.entity";
       CartItem,
       Product,
       PaymentSettings,
+      Admin,
     ]),
+    MailModule,
   ],
   controllers: [OrdersController],
   providers: [OrdersService],

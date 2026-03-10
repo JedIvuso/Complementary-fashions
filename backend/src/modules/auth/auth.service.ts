@@ -13,6 +13,7 @@ import * as crypto from "crypto";
 import { ConfigService } from "@nestjs/config";
 import { User } from "../users/user.entity";
 import { Admin } from "../admins/admin.entity";
+import { MailService } from "../../mail/mail.service";
 import { RegisterDto } from "./dto/register.dto";
 import { LoginDto } from "./dto/login.dto";
 
@@ -23,6 +24,7 @@ export class AuthService {
     @InjectRepository(Admin) private adminsRepository: Repository<Admin>,
     private jwtService: JwtService,
     private configService: ConfigService,
+    private mailService: MailService,
   ) {}
 
   async register(registerDto: RegisterDto) {
@@ -36,6 +38,10 @@ export class AuthService {
       password: hashedPassword,
     });
     await this.usersRepository.save(user);
+    // Send welcome email (non-blocking)
+    this.mailService
+      .sendWelcomeEmail(user.email, user.firstName)
+      .catch(() => {});
     const token = this.generateUserToken(user);
     return { user: this.sanitizeUser(user), token };
   }
@@ -149,10 +155,14 @@ export class AuthService {
     user.resetToken = token;
     user.resetTokenExpiry = expiry;
     await this.usersRepository.save(user);
-    // Return token directly (in production this would be emailed)
-    return {
+    // Send password reset email
+    await this.mailService.sendPasswordResetEmail(
+      user.email,
+      user.firstName,
       token,
-      message: "Use this token to reset your password. Valid for 1 hour.",
+    );
+    return {
+      message: "Password reset instructions have been sent to your email.",
     };
   }
 

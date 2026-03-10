@@ -65,6 +65,19 @@ export class CartService {
     if (!product) throw new NotFoundException("Product not found");
     if (!product.isAvailable)
       throw new BadRequestException("Product is not available");
+    if (product.stockQuantity <= 0)
+      throw new BadRequestException("This product is out of stock");
+
+    // Check requested quantity doesn't exceed available stock
+    const existingQty = await this.cartRepository.findOne({
+      where: { userId, productId, variantId: variantId || null },
+    });
+    const totalQty = (existingQty?.quantity || 0) + quantity;
+    if (totalQty > product.stockQuantity) {
+      throw new BadRequestException(
+        `Only ${product.stockQuantity} item(s) available in stock`,
+      );
+    }
 
     let cartItem = await this.cartRepository.findOne({
       where: { userId, productId, variantId: variantId || null },

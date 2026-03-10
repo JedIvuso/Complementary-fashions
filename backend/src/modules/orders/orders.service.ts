@@ -10,6 +10,8 @@ import { OrderItem } from "./order-item.entity";
 import { CartItem } from "../cart/cart-item.entity";
 import { Product } from "../products/product.entity";
 import { PaymentSettings } from "../payments/payment-settings.entity";
+import { Admin } from "../admins/admin.entity";
+import { MailService } from "../../mail/mail.service";
 
 @Injectable()
 export class OrdersService {
@@ -24,6 +26,9 @@ export class OrdersService {
     private productsRepository: Repository<Product>,
     @InjectRepository(PaymentSettings)
     private paymentSettingsRepo: Repository<PaymentSettings>,
+    @InjectRepository(Admin)
+    private adminsRepository: Repository<Admin>,
+    private mailService: MailService,
   ) {}
 
   async createOrder(userId: string, deliveryDetails: any) {
@@ -34,6 +39,22 @@ export class OrdersService {
 
     if (!cartItems.length) {
       throw new BadRequestException("Cart is empty");
+    }
+
+    // Validate stock availability for all items before creating order
+    for (const item of cartItems) {
+      if (!item.product)
+        throw new BadRequestException(
+          "A product in your cart is no longer available",
+        );
+      if (!item.product.isAvailable || item.product.stockQuantity <= 0) {
+        throw new BadRequestException(`"${item.product.name}" is out of stock`);
+      }
+      if (item.quantity > item.product.stockQuantity) {
+        throw new BadRequestException(
+          `Only ${item.product.stockQuantity} unit(s) of "${item.product.name}" are available`,
+        );
+      }
     }
 
     const subtotal = cartItems.reduce((sum, item) => {
@@ -101,11 +122,22 @@ export class OrdersService {
           .decrement({ id: item.variantId }, "stockQuantity", item.quantity);
       }
       // Always reduce the product-level stock too
-      await this.productsRepository.decrement(
-        { id: item.productId },
-        "stockQuantity",
-        item.quantity,
-      );
+      // Decrement stock but never go below 0
+      await this.productsRepository
+        .createQueryBuilder()
+        .update()
+        .set({
+          stockQuantity: () => `GREATEST(stock_quantity - ${item.quantity}, 0)`,
+        })
+        .where("id = :id", { id: item.productId })
+        .execute();
+      // Auto-mark as unavailable if stock hits 0
+      await this.productsRepository
+        .createQueryBuilder()
+        .update()
+        .set({ isAvailable: false })
+        .where("id = :id AND stock_quantity <= 0", { id: item.productId })
+        .execute();
       await this.productsRepository.increment(
         { id: item.productId },
         "soldCount",
@@ -115,7 +147,23 @@ export class OrdersService {
 
     await this.cartRepository.delete({ userId });
 
-    return this.findOne(savedOrder.id);
+    // Load full order for emails
+    const fullOrder = await this.findOne(savedOrder.id);
+
+    // Send order confirmation to customer (non-blocking)
+    this.mailService.sendOrderConfirmation(fullOrder).catch(() => {});
+
+    // Notify all admins
+    const admins = await this.adminsRepository.find({
+      where: { isActive: true },
+    });
+    for (const admin of admins) {
+      this.mailService
+        .sendAdminNewOrderNotification(fullOrder, admin.email)
+        .catch(() => {});
+    }
+
+    return fullOrder;
   }
 
   async findAll(filters: any = {}) {
@@ -172,7 +220,10 @@ export class OrdersService {
   async updateStatus(id: string, status: OrderStatus) {
     const order = await this.findOne(id);
     order.status = status;
-    return this.ordersRepository.save(order);
+    const saved = await this.ordersRepository.save(order);
+    // Send status update email to customer (non-blocking)
+    this.mailService.sendOrderStatusUpdate(saved, status).catch(() => {});
+    return saved;
   }
 
   async getDashboardStats() {

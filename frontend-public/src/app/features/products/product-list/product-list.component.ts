@@ -333,6 +333,7 @@ export class ProductListComponent implements OnInit {
       limit: 12,
       sortBy: sortField,
       sortDir,
+      isAvailable: "true",
     };
     if (this.searchQuery) params.search = this.searchQuery;
     if (this.selectedCategory) params.categoryId = this.selectedCategory;
@@ -340,12 +341,26 @@ export class ProductListComponent implements OnInit {
     if (this.maxPrice) params.maxPrice = this.maxPrice;
     this.productsSvc.getAll(params).subscribe({
       next: (res: any) => {
-        this.products.set(res.data);
-        this.total.set(res.meta.total);
-        this.totalPages.set(res.meta.totalPages);
+        if (Array.isArray(res)) {
+          this.products.set(res);
+          this.total.set(res.length);
+          this.totalPages.set(1);
+        } else if (res?.data !== undefined) {
+          // Backend returns { data: [], meta: { total, totalPages } }
+          this.products.set(res.data ?? []);
+          this.total.set(res.meta?.total ?? 0);
+          this.totalPages.set(res.meta?.totalPages ?? 1);
+        } else {
+          this.products.set(res?.items ?? []);
+          this.total.set(res?.total ?? 0);
+          this.totalPages.set(res?.pages ?? 1);
+        }
         this.loading.set(false);
       },
-      error: () => this.loading.set(false),
+      error: () => {
+        this.products.set([]);
+        this.loading.set(false);
+      },
     });
   }
 
