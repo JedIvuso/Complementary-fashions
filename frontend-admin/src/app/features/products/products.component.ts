@@ -259,12 +259,21 @@ import { environment } from "../../../environments/environment";
                 </div>
                 <div class="form-group">
                   <label class="form-label">Stock Quantity</label>
-                  <input
-                    class="form-input"
-                    type="number"
-                    [(ngModel)]="form.stockQuantity"
-                    placeholder="0"
-                  />
+                  @if (form.variants?.length > 0) {
+                    <div class="stock-auto-display">
+                      {{ variantStockTotal() }}
+                      <span class="stock-auto-note"
+                        >Auto-calculated from variants</span
+                      >
+                    </div>
+                  } @else {
+                    <input
+                      class="form-input"
+                      type="number"
+                      [(ngModel)]="form.stockQuantity"
+                      placeholder="0"
+                    />
+                  }
                 </div>
               </div>
 
@@ -480,6 +489,24 @@ import { environment } from "../../../environments/environment";
         margin-bottom: 8px;
         align-items: center;
       }
+      .stock-auto-display {
+        background: #f0e8df;
+        border: 1px solid #e8ddd5;
+        border-radius: var(--radius-sm, 6px);
+        padding: 9px 12px;
+        font-weight: 700;
+        color: #8b6f47;
+        font-size: 1rem;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+      .stock-auto-note {
+        font-size: 0.7rem;
+        font-weight: 400;
+        color: #a08060;
+        font-style: italic;
+      }
       .toggle-label {
         display: flex;
         align-items: center;
@@ -641,15 +668,25 @@ export class AdminProductsComponent implements OnInit {
     this.form.variants.splice(index, 1);
   }
 
+  variantStockTotal(): number {
+    if (!this.form.variants?.length) return this.form.stockQuantity;
+    return this.form.variants.reduce(
+      (sum: number, v: any) => sum + Math.max(0, Number(v.stockQuantity) || 0),
+      0,
+    );
+  }
+
   saveProduct() {
     if (!this.form.name || !this.form.categoryId || !this.form.price) {
       alert("Please fill in Name, Category and Price");
       return;
     }
     this.saving.set(true);
+    // Send correct stock: sum of variants if variants exist, manual value otherwise
+    const payload = { ...this.form, stockQuantity: this.variantStockTotal() };
     const req = this.editing
-      ? this.api.put(`/products/${this.editing.id}`, this.form)
-      : this.api.post("/products", this.form);
+      ? this.api.put(`/products/${this.editing.id}`, payload)
+      : this.api.post("/products", payload);
 
     req.subscribe({
       next: () => {

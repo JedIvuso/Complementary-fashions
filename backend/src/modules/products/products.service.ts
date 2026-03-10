@@ -131,11 +131,22 @@ export class ProductsService {
   }
 
   async create(data: any) {
+    // If variants provided, stock = sum of variant stocks
+    const variantStockTotal = data.variants?.length
+      ? data.variants.reduce(
+          (sum: number, v: any) => sum + Math.max(0, v.stockQuantity || 0),
+          0,
+        )
+      : null;
+
     const product = this.productsRepository.create({
       name: data.name,
       description: data.description,
       price: data.price,
-      stockQuantity: Math.max(0, data.stockQuantity || 0),
+      stockQuantity:
+        variantStockTotal !== null
+          ? variantStockTotal
+          : Math.max(0, data.stockQuantity || 0),
       categoryId: data.categoryId,
       isFeatured: data.isFeatured || false,
       isAvailable: data.isAvailable !== false,
@@ -173,20 +184,27 @@ export class ProductsService {
   async update(id: string, data: any) {
     const product = await this.findOne(id);
 
-    Object.assign(product, {
+    // Compute stock once upfront — variants take priority over manual input
+    const hasVariants = data.variants && data.variants.length > 0;
+    const computedStock = hasVariants
+      ? data.variants.reduce(
+          (sum: number, v: any) => sum + Math.max(0, v.stockQuantity || 0),
+          0,
+        )
+      : data.stockQuantity !== undefined
+        ? Math.max(0, data.stockQuantity)
+        : product.stockQuantity;
+
+    // Single DB write for all scalar fields — no double-write, no cache conflict
+    await this.productsRepository.update(id, {
       name: data.name ?? product.name,
       description: data.description ?? product.description,
       price: data.price ?? product.price,
-      stockQuantity:
-        data.stockQuantity !== undefined
-          ? Math.max(0, data.stockQuantity)
-          : product.stockQuantity,
+      stockQuantity: computedStock,
       categoryId: data.categoryId ?? product.categoryId,
       isFeatured: data.isFeatured ?? product.isFeatured,
       isAvailable: data.isAvailable ?? product.isAvailable,
     });
-
-    await this.productsRepository.save(product);
 
     if (data.images) {
       await this.imagesRepository.delete({ productId: id });
@@ -203,16 +221,18 @@ export class ProductsService {
 
     if (data.variants) {
       await this.variantsRepository.delete({ productId: id });
-      const variants = data.variants.map((v: any) =>
-        this.variantsRepository.create({
-          productId: id,
-          size: v.size,
-          color: v.color,
-          stockQuantity: v.stockQuantity || 0,
-          additionalPrice: v.additionalPrice || 0,
-        }),
-      );
-      await this.variantsRepository.save(variants);
+      if (hasVariants) {
+        const variants = data.variants.map((v: any) =>
+          this.variantsRepository.create({
+            productId: id,
+            size: v.size,
+            color: v.color,
+            stockQuantity: v.stockQuantity || 0,
+            additionalPrice: v.additionalPrice || 0,
+          }),
+        );
+        await this.variantsRepository.save(variants);
+      }
     }
 
     return this.findOne(id);

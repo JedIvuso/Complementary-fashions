@@ -59,6 +59,14 @@ import { environment } from "../../environments/environment";
           <div class="nav-section">
             <div class="nav-section-label">Sales</div>
             <a
+              routerLink="/pos"
+              routerLinkActive="active"
+              class="nav-item"
+              (click)="sidebarOpen.set(false)"
+            >
+              <span class="nav-icon">🏪</span> Point of Sale
+            </a>
+            <a
               routerLink="/orders"
               routerLinkActive="active"
               class="nav-item"
@@ -73,6 +81,14 @@ import { environment } from "../../environments/environment";
               (click)="sidebarOpen.set(false)"
             >
               <span class="nav-icon">👥</span> Customers
+            </a>
+            <a
+              routerLink="/analytics"
+              routerLinkActive="active"
+              class="nav-item"
+              (click)="sidebarOpen.set(false)"
+            >
+              <span class="nav-icon">📊</span> Analytics
             </a>
           </div>
 
@@ -136,7 +152,6 @@ import { environment } from "../../environments/environment";
           </div>
 
           <div class="header-actions">
-            <!-- Theme toggle -->
             <button
               class="btn-icon"
               (click)="themeService.toggle()"
@@ -145,11 +160,8 @@ import { environment } from "../../environments/environment";
               {{ themeService.theme() === "light" ? "🌙" : "☀️" }}
             </button>
 
-            <!-- Admin info -->
             <div class="admin-profile">
-              <div class="admin-avatar">
-                {{ getInitials() }}
-              </div>
+              <div class="admin-avatar">{{ getInitials() }}</div>
               <div class="admin-info">
                 <span class="admin-name">{{ auth.admin()?.firstName }}</span>
                 <span class="admin-role-badge">{{

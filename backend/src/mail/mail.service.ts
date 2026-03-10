@@ -111,8 +111,8 @@ export class MailService {
            </div>`;
 
       const content = `
-        <h2 style="margin:0 0 6px;color:#3d2b1f;font-size:22px;">Thank you, ${order.deliveryFullName}! 🎉</h2>
-        <p style="margin:0 0 24px;color:#7a5c44;font-size:15px;">Your order has been placed successfully.</p>
+        <h2 style="margin:0 0 6px;color:#3d2b1f;font-size:22px;">Thank you, ${order.orderType === "pos" ? order.posCustomerName || "valued customer" : order.deliveryFullName}! 🎉</h2>
+        <p style="margin:0 0 24px;color:#7a5c44;font-size:15px;">${order.orderType === "pos" ? "Here is your receipt for your in-store purchase." : "Your order has been placed successfully."}</p>
         <div style="background:#f0e8df;border-radius:10px;padding:16px 20px;margin-bottom:24px;">
           <p style="margin:0;font-size:13px;color:#a08060;text-transform:uppercase;letter-spacing:1px;">Order Number</p>
           <p style="margin:4px 0 0;font-size:20px;font-weight:700;color:#8b6f47;font-family:monospace;">${order.orderNumber}</p>
@@ -125,36 +125,77 @@ export class MailService {
             <td style="padding:10px 0;color:#7a5c44;">Subtotal</td>
             <td style="padding:10px 0;text-align:right;color:#7a5c44;">KSh ${Number(order.subtotal).toLocaleString()}</td>
           </tr>
-          <tr>
+          ${
+            Number(order.discountAmount) > 0
+              ? `<tr>
+            <td style="padding:6px 0;color:#e05252;">Discount</td>
+            <td style="padding:6px 0;text-align:right;color:#e05252;">-KSh ${Number(order.discountAmount).toLocaleString()}</td>
+          </tr>`
+              : ""
+          }
+          ${
+            Number(order.taxAmount) > 0
+              ? `<tr>
+            <td style="padding:6px 0;color:#7a5c44;">Tax</td>
+            <td style="padding:6px 0;text-align:right;color:#7a5c44;">KSh ${Number(order.taxAmount).toLocaleString()}</td>
+          </tr>`
+              : ""
+          }
+          ${
+            order.orderType !== "pos" && Number(order.deliveryFee) > 0
+              ? `<tr>
             <td style="padding:6px 0;color:#7a5c44;">Delivery Fee</td>
             <td style="padding:6px 0;text-align:right;color:#7a5c44;">KSh ${Number(order.deliveryFee).toLocaleString()}</td>
-          </tr>
+          </tr>`
+              : ""
+          }
           <tr>
             <td style="padding:12px 0 0;font-size:18px;font-weight:700;color:#8b6f47;border-top:2px solid #e8ddd5;">Total</td>
             <td style="padding:12px 0 0;text-align:right;font-size:18px;font-weight:700;color:#8b6f47;border-top:2px solid #e8ddd5;">KSh ${Number(order.totalAmount).toLocaleString()}</td>
           </tr>
         </table>
+        ${
+          order.orderType === "pos"
+            ? `
+        <div style="margin-top:20px;background:#f0e8df;border-radius:8px;padding:14px 16px;">
+          <p style="margin:0;font-size:13px;color:#a08060;text-transform:uppercase;letter-spacing:1px;">In-Store Purchase</p>
+          <p style="margin:6px 0 0;color:#5a3e2b;">📍 <strong>Complementary Fashions</strong> — In-Store Sale</p>
+          <p style="margin:4px 0;color:#7a5c44;">Staff: ${order.processedByName}</p>
+          ${order.notes ? `<p style="margin:6px 0 0;color:#a08060;font-style:italic;font-size:13px;">Note: ${order.notes}</p>` : ""}
+        </div>`
+            : `
         <div style="margin-top:28px;padding-top:24px;border-top:1px solid #e8ddd5;">
           <h3 style="color:#3d2b1f;font-size:15px;margin:0 0 14px;text-transform:uppercase;letter-spacing:1px;">Delivery Details</h3>
           <p style="margin:4px 0;color:#5a3e2b;"><strong>${order.deliveryFullName}</strong></p>
           <p style="margin:4px 0;color:#7a5c44;">${order.deliveryAddress}${order.deliveryCity ? ", " + order.deliveryCity : ""}</p>
           <p style="margin:4px 0;color:#7a5c44;">📞 ${order.deliveryPhone}</p>
           ${order.notes ? `<p style="margin:10px 0 0;color:#a08060;font-style:italic;font-size:13px;">Note: ${order.notes}</p>` : ""}
-        </div>
+        </div>`
+        }
+        ${
+          order.orderType !== "pos"
+            ? `
         <div style="margin-top:28px;text-align:center;">
           <a href="${this.storeUrl}/orders" style="background:linear-gradient(135deg,#8b6f47,#c8956c);color:white;padding:14px 32px;border-radius:50px;text-decoration:none;font-size:14px;font-weight:600;display:inline-block;">
             Track Your Order →
           </a>
-        </div>
+        </div>`
+            : ""
+        }
         <p style="margin:24px 0 0;color:#a08060;font-size:13px;text-align:center;">
           Questions? Contact us at <a href="mailto:${this.configService.get("MAIL_USER")}" style="color:#8b6f47;">${this.configService.get("MAIL_USER")}</a>
         </p>
       `;
 
+      const subject =
+        order.orderType === "pos"
+          ? `🧾 Your Receipt ${order.orderNumber} — Complementary Fashions`
+          : `Order Confirmed ✅ ${order.orderNumber} — Complementary Fashions`;
+
       await this.transporter.sendMail({
         from: this.fromAddress,
         to: order.deliveryEmail,
-        subject: `Order Confirmed ✅ ${order.orderNumber} — Complementary Fashions`,
+        subject,
         html: this.baseTemplate(content),
       });
       this.logger.log(`Order confirmation sent to ${order.deliveryEmail}`);

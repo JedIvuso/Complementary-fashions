@@ -29,7 +29,7 @@ export class Order {
   @Column({ name: "order_number", unique: true })
   orderNumber: string;
 
-  @Column({ name: "user_id" })
+  @Column({ name: "user_id", nullable: true })
   userId: string;
 
   @ManyToOne(() => User, { onDelete: "SET NULL", nullable: true })
@@ -85,6 +85,73 @@ export class Order {
 
   @Column({ name: "selected_payment_method", nullable: true })
   selectedPaymentMethod: string;
+
+  // POS fields
+  @Column({ name: "order_type", default: "online" })
+  orderType: string; // 'online' | 'pos'
+
+  @Column({ name: "pos_customer_name", nullable: true })
+  posCustomerName: string;
+
+  @Column({ name: "pos_customer_phone", nullable: true })
+  posCustomerPhone: string;
+
+  @Column({ name: "pos_customer_email", nullable: true })
+  posCustomerEmail: string;
+
+  @Column({ name: "processed_by_id", nullable: true })
+  processedById: string;
+
+  @Column({ name: "processed_by_name", nullable: true })
+  processedByName: string;
+
+  @Column({
+    type: "decimal",
+    precision: 10,
+    scale: 2,
+    name: "discount_amount",
+    default: 0,
+  })
+  discountAmount: number;
+
+  @Column({ name: "discount_type", nullable: true })
+  discountType: string; // 'percentage' | 'fixed'
+
+  @Column({
+    type: "decimal",
+    precision: 5,
+    scale: 2,
+    name: "discount_value",
+    default: 0,
+  })
+  discountValue: number;
+
+  @Column({
+    type: "decimal",
+    precision: 10,
+    scale: 2,
+    name: "tax_amount",
+    default: 0,
+  })
+  taxAmount: number;
+
+  @Column({
+    name: "cash_tendered",
+    type: "decimal",
+    precision: 10,
+    scale: 2,
+    nullable: true,
+  })
+  cashTendered: number;
+
+  @Column({
+    name: "change_given",
+    type: "decimal",
+    precision: 10,
+    scale: 2,
+    nullable: true,
+  })
+  changeGiven: number;
 
   @OneToMany(() => Payment, (payment) => payment.order)
   payments: Payment[];
