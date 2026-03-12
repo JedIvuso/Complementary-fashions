@@ -133,6 +133,18 @@ import { ApiService } from "../../core/services/api.service";
                     </select>
                   </div>
                 </div>
+                @if (form.paybillAccountFormat === "STORE_NAME") {
+                  <div class="form-group" style="margin-top: 4px;">
+                    <label class="form-label"
+                      >Store Name (shown to customer as account number)</label
+                    >
+                    <input
+                      class="form-input"
+                      [(ngModel)]="form.paybillStoreName"
+                      placeholder="e.g. Complementary Fashions"
+                    />
+                  </div>
+                }
               </div>
             }
           </div>

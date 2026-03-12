@@ -31,6 +31,7 @@ export class PaymentSettingsService {
       paybillEnabled: s.paybillEnabled,
       paybillNumber: s.paybillNumber,
       paybillAccountFormat: s.paybillAccountFormat,
+      paybillStoreName: s.paybillStoreName,
       tillEnabled: s.tillEnabled,
       tillNumber: s.tillNumber,
       tillName: s.tillName,

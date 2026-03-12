@@ -38,7 +38,10 @@ export class PaymentSettings {
     nullable: true,
     default: "ORDER_NUMBER",
   })
-  paybillAccountFormat: string; // ORDER_NUMBER or custom text
+  paybillAccountFormat: string; // ORDER_NUMBER or STORE_NAME
+
+  @Column({ name: "paybill_store_name", nullable: true })
+  paybillStoreName: string; // shown as account no when format = STORE_NAME
 
   // Till Number
   @Column({ name: "till_enabled", default: false })

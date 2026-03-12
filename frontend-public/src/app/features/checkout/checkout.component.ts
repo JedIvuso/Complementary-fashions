@@ -270,9 +270,22 @@ import { AuthService } from "../../core/services/auth.service";
                       </div>
                       <div class="step">
                         <span class="step-n">4</span> Account No:
-                        <strong class="accent"
-                          >Your order number (shown after placing)</strong
-                        >
+                        @if (
+                          ps()?.paybillAccountFormat === "STORE_NAME" &&
+                          ps()?.paybillStoreName
+                        ) {
+                          <strong class="accent">{{
+                            ps()?.paybillStoreName
+                          }}</strong>
+                        } @else if (currentOrderNumber()) {
+                          <strong class="accent">{{
+                            currentOrderNumber()
+                          }}</strong>
+                        } @else {
+                          <strong class="accent"
+                            >Your order number (shown after placing)</strong
+                          >
+                        }
                       </div>
                     }
                     @if (selectedMethod() === "till") {
@@ -304,7 +317,7 @@ import { AuthService } from "../../core/services/auth.service";
                       }}</span>
                       Amount:
                       <strong class="accent"
-                        >KSh {{ cart()?.total | number: "1.0-0" }}</strong
+                        >KSh {{ displayTotal() | number: "1.0-0" }}</strong
                       >
                     </div>
                   </div>
@@ -329,8 +342,17 @@ import { AuthService } from "../../core/services/auth.service";
                 >
                   @if (processingOrder()) {
                     Placing Order...
+                  } @else if (currentOrderId() && selectedMethod() === "stk") {
+                    Retry STK Push →
+                  } @else if (
+                    currentOrderId() &&
+                    (selectedMethod() === "cod" || selectedMethod() === "later")
+                  ) {
+                    Place Order →
+                  } @else if (currentOrderId()) {
+                    Proceed to Pay →
                   } @else if (selectedMethod() === "stk") {
-                    Pay KSh {{ cart()?.total | number: "1.0-0" }} →
+                    Pay KSh {{ displayTotal() | number: "1.0-0" }} →
                   } @else if (
                     selectedMethod() === "cod" || selectedMethod() === "later"
                   ) {
@@ -375,7 +397,7 @@ import { AuthService } from "../../core/services/auth.service";
               </div>
               <div class="sum-row total-row">
                 <span>Amount</span
-                ><strong>KSh {{ cart()?.total | number: "1.0-0" }}</strong>
+                ><strong>KSh {{ displayTotal() | number: "1.0-0" }}</strong>
               </div>
             </div>
             <div class="method-detail">
@@ -443,7 +465,7 @@ import { AuthService } from "../../core/services/auth.service";
         }
 
         <!-- Order Summary sidebar -->
-        @if (cart()) {
+        @if (cart()?.items?.length || resumedTotal()) {
           <div class="order-summary card">
             <h3>Order Summary</h3>
             @for (item of cart()?.items; track item.id) {
@@ -472,16 +494,27 @@ import { AuthService } from "../../core/services/auth.service";
               style="border-top: 1px solid var(--color-border); margin-top: 16px; padding-top: 16px;"
             >
               <div class="summary-line">
-                <span>Subtotal</span
-                ><span>KSh {{ cart()?.subtotal | number: "1.0-0" }}</span>
+                <span>Subtotal</span>
+                <span
+                  >KSh
+                  {{
+                    resumedSubtotal() ?? cart()?.subtotal ?? 0 | number: "1.0-0"
+                  }}</span
+                >
               </div>
               <div class="summary-line">
-                <span>Delivery</span
-                ><span>KSh {{ cart()?.deliveryFee | number: "1.0-0" }}</span>
+                <span>Delivery</span>
+                <span
+                  >KSh
+                  {{
+                    resumedDelivery() ?? cart()?.deliveryFee ?? 0
+                      | number: "1.0-0"
+                  }}</span
+                >
               </div>
               <div class="summary-line total">
-                <span>Total</span
-                ><span>KSh {{ cart()?.total | number: "1.0-0" }}</span>
+                <span>Total</span>
+                <span>KSh {{ displayTotal() | number: "1.0-0" }}</span>
               </div>
             </div>
           </div>
@@ -828,6 +861,9 @@ export class CheckoutComponent implements OnInit, OnDestroy {
   currentOrderId = signal<string | null>(null);
   currentOrderNumber = signal<string | null>(null);
   checkoutRequestId = signal<string | null>(null);
+  resumedTotal = signal<number | null>(null);
+  resumedSubtotal = signal<number | null>(null);
+  resumedDelivery = signal<number | null>(null);
   selectedMethod = signal<string>("");
   loadingPaymentSettings = signal(true);
   ps = signal<any>(null);
@@ -873,6 +909,35 @@ export class CheckoutComponent implements OnInit, OnDestroy {
         else if (s.sendMoneyEnabled) this.selectedMethod.set("send");
         else if (s.payOnDeliveryEnabled) this.selectedMethod.set("cod");
         else if (s.payLaterEnabled) this.selectedMethod.set("later");
+
+        // Check if arriving via "Complete Payment" from order detail page
+        const resume = history.state?.resumeOrder;
+        if (resume) {
+          this.currentOrderId.set(resume.id);
+          this.currentOrderNumber.set(resume.orderNumber);
+          this.delivery.fullName =
+            resume.deliveryFullName || this.delivery.fullName;
+          this.delivery.phone = resume.deliveryPhone || "";
+          this.delivery.email = resume.deliveryEmail || this.delivery.email;
+          this.delivery.address = resume.deliveryAddress || "";
+          this.delivery.city = resume.deliveryCity || "";
+          // Pre-select their previously chosen method if available
+          const prev = resume.selectedPaymentMethod;
+          if (prev && prev !== "cod" && prev !== "later") {
+            this.selectedMethod.set(prev === "mpesa-stk" ? "stk" : prev);
+          }
+          this.resumedTotal.set(
+            resume.total != null ? Number(resume.total) : null,
+          );
+          this.resumedSubtotal.set(
+            resume.subtotal != null ? Number(resume.subtotal) : null,
+          );
+          this.resumedDelivery.set(
+            resume.deliveryFee != null ? Number(resume.deliveryFee) : null,
+          );
+          // Skip delivery step — go straight to payment
+          this.step.set("payment");
+        }
       },
       error: () => this.loadingPaymentSettings.set(false),
     });
@@ -908,6 +973,10 @@ export class CheckoutComponent implements OnInit, OnDestroy {
     this.step.set("payment");
   }
 
+  displayTotal(): number {
+    return this.resumedTotal() ?? this.cart()?.total ?? 0;
+  }
+
   placeOrder() {
     if (!this.selectedMethod()) {
       this.toast.error("Please select a payment method");
@@ -917,6 +986,42 @@ export class CheckoutComponent implements OnInit, OnDestroy {
       this.toast.error("Please enter your M-Pesa phone number");
       return;
     }
+
+    // If order already exists (resumed from order detail or STK retry),
+    // update the payment method if it changed, then proceed
+    if (this.currentOrderId()) {
+      const method = this.selectedMethod();
+      this.processingOrder.set(true);
+      this.api
+        .patch(`/orders/my-orders/${this.currentOrderId()}/payment-method`, {
+          paymentMethod: method,
+        })
+        .subscribe({
+          next: () => {
+            this.processingOrder.set(false);
+            if (method === "stk") {
+              this.initiateStkPush(this.currentOrderId()!);
+            } else if (method === "cod" || method === "later") {
+              this.step.set("confirmed");
+            } else {
+              this.step.set("confirm-code");
+            }
+          },
+          error: () => {
+            this.processingOrder.set(false);
+            // Even if update fails, still proceed — non-critical
+            if (method === "stk") {
+              this.initiateStkPush(this.currentOrderId()!);
+            } else if (method === "cod" || method === "later") {
+              this.step.set("confirmed");
+            } else {
+              this.step.set("confirm-code");
+            }
+          },
+        });
+      return;
+    }
+
     this.processingOrder.set(true);
 
     this.ordersService
@@ -928,22 +1033,7 @@ export class CheckoutComponent implements OnInit, OnDestroy {
           this.processingOrder.set(false);
 
           if (this.selectedMethod() === "stk") {
-            this.api
-              .post("/payments/mpesa/initiate", {
-                orderId: order.id,
-                phoneNumber: this.mpesaPhone,
-              })
-              .subscribe({
-                next: (res: any) => {
-                  this.checkoutRequestId.set(res.checkoutRequestId);
-                  this.step.set("pending-payment");
-                  this.startPolling();
-                },
-                error: () =>
-                  this.toast.error(
-                    "Payment initiation failed. Please try again.",
-                  ),
-              });
+            this.initiateStkPush(order.id);
           } else if (
             this.selectedMethod() === "cod" ||
             this.selectedMethod() === "later"
@@ -958,6 +1048,26 @@ export class CheckoutComponent implements OnInit, OnDestroy {
           this.processingOrder.set(false);
           this.toast.error("Failed to create order");
         },
+      });
+  }
+
+  private initiateStkPush(orderId: string) {
+    this.api
+      .post("/payments/mpesa/initiate", {
+        orderId,
+        phoneNumber: this.mpesaPhone,
+      })
+      .subscribe({
+        next: (res: any) => {
+          this.checkoutRequestId.set(res.checkoutRequestId);
+          this.step.set("pending-payment");
+          this.startPolling();
+        },
+        error: (err) =>
+          this.toast.error(
+            err?.error?.message ||
+              "Payment initiation failed. Please try again.",
+          ),
       });
   }
 
@@ -993,8 +1103,12 @@ export class CheckoutComponent implements OnInit, OnDestroy {
     let attempts = 0;
     this.pollInterval = setInterval(() => {
       attempts++;
-      if (attempts > 20) {
+      if (attempts > 24) {
         clearInterval(this.pollInterval);
+        this.toast.error(
+          "No response received. Please try again or choose a different method.",
+        );
+        this.step.set("payment");
         return;
       }
       this.api
@@ -1003,10 +1117,13 @@ export class CheckoutComponent implements OnInit, OnDestroy {
           next: (res: any) => {
             if (res.status === "completed") {
               clearInterval(this.pollInterval);
+              this.cartService.getCart().subscribe();
               this.step.set("confirmed");
             } else if (res.status === "failed") {
               clearInterval(this.pollInterval);
-              this.toast.error("Payment failed");
+              this.toast.error(
+                "Payment cancelled or failed. Try again or choose a different method.",
+              );
               this.step.set("payment");
             }
           },

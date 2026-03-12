@@ -3,11 +3,13 @@ import {
   Get,
   Post,
   Put,
+  Patch,
   Body,
   Param,
   Query,
   UseGuards,
   Res,
+  Request,
 } from "@nestjs/common";
 import { ApiTags, ApiBearerAuth } from "@nestjs/swagger";
 import { Response } from "express";
@@ -41,6 +43,21 @@ export class OrdersController {
   @ApiBearerAuth()
   getMyOrder(@Param("id") id: string) {
     return this.ordersService.findOne(id);
+  }
+
+  @Patch("my-orders/:id/payment-method")
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  updatePaymentMethod(
+    @Param("id") id: string,
+    @Body() body: { paymentMethod: string },
+    @Request() req: any,
+  ) {
+    return this.ordersService.updatePaymentMethod(
+      id,
+      req.user.userId,
+      body.paymentMethod,
+    );
   }
 
   @Get()

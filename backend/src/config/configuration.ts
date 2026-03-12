@@ -31,11 +31,11 @@ export default () => ({
     maxSize: 5 * 1024 * 1024,
   },
   paybill: {
-    businessShortCode: process.env.PAYBILL_SHORT_CODE || "",
-    passKey: process.env.PAYBILL_PASS_KEY || "",
-    consumerKey: process.env.PAYBILL_CONSUMER_KEY || "",
-    consumerSecret: process.env.PAYBILL_CONSUMER_SECRET || "",
-    callbackUrl: process.env.PAYBILL_CALLBACK_URL || "",
+    businessShortCode: process.env.MPESA_SHORTCODE || "",
+    passKey: process.env.MPESA_PASSKEY || "",
+    consumerKey: process.env.MPESA_CONSUMER_KEY || "",
+    consumerSecret: process.env.MPESA_CONSUMER_SECRET || "",
+    callbackUrl: process.env.MPESA_CALLBACK_URL || "",
   },
   frontend: {
     url: process.env.FRONTEND_URL || "http://localhost:4200",

@@ -1,6 +1,6 @@
 import { Component, OnInit, signal } from "@angular/core";
 import { CommonModule } from "@angular/common";
-import { ActivatedRoute, RouterLink } from "@angular/router";
+import { ActivatedRoute, Router, RouterLink } from "@angular/router";
 import { ApiService } from "../../core/services/api.service";
 
 @Component({
@@ -195,9 +195,12 @@ import { ApiService } from "../../core/services/api.service";
                 order()?.status === "pending" &&
                 order()?.selectedPaymentMethod !== "cod"
               ) {
-                <a routerLink="/orders" class="btn btn-primary btn-full"
-                  >Complete Payment →</a
+                <button
+                  class="btn btn-primary btn-full"
+                  (click)="resumePayment()"
                 >
+                  Complete Payment →
+                </button>
               }
             </div>
           </div>
@@ -469,6 +472,7 @@ export class OrderDetailComponent implements OnInit {
   constructor(
     private route: ActivatedRoute,
     private api: ApiService,
+    private router: Router,
   ) {}
 
   ngOnInit() {
@@ -534,5 +538,26 @@ export class OrderDetailComponent implements OnInit {
       later: "⏳ Pay Later",
     };
     return labels[method] || "—";
+  }
+  resumePayment() {
+    const o = this.order();
+    if (!o) return;
+    this.router.navigate(["/checkout"], {
+      state: {
+        resumeOrder: {
+          id: o.id,
+          orderNumber: o.orderNumber,
+          total: o.totalAmount,
+          subtotal: o.subtotal,
+          deliveryFee: o.deliveryFee,
+          deliveryFullName: o.deliveryFullName,
+          deliveryPhone: o.deliveryPhone,
+          deliveryEmail: o.deliveryEmail,
+          deliveryAddress: o.deliveryAddress,
+          deliveryCity: o.deliveryCity,
+          selectedPaymentMethod: o.selectedPaymentMethod,
+        },
+      },
+    });
   }
 }

@@ -256,6 +256,23 @@ export class OrdersService {
     };
   }
 
+  async updatePaymentMethod(
+    orderId: string,
+    userId: string,
+    paymentMethod: string,
+  ) {
+    const order = await this.ordersRepository.findOne({
+      where: { id: orderId, userId },
+    });
+    if (!order) throw new Error("Order not found");
+    if (order.status !== "pending")
+      throw new Error("Cannot update payment method for this order");
+    await this.ordersRepository.update(orderId, {
+      selectedPaymentMethod: paymentMethod,
+    });
+    return { success: true };
+  }
+
   async exportOrders() {
     return this.ordersRepository.find({
       relations: ["user", "items"],
