@@ -22,7 +22,7 @@ build/
 out/
 
 # Uploads (user-uploaded files)
-uploads/
+/uploads/
 backend/uploads/
 
 # Logs
