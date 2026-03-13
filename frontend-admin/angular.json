@@ -6,7 +6,10 @@
     "admin": {
       "projectType": "application",
       "schematics": {
-        "@schematics/angular:component": { "standalone": true, "style": "scss" }
+        "@schematics/angular:component": {
+          "standalone": true,
+          "style": "scss"
+        }
       },
       "root": "",
       "sourceRoot": "src",
@@ -51,8 +54,12 @@
         "serve": {
           "builder": "@angular-devkit/build-angular:dev-server",
           "configurations": {
-            "production": { "buildTarget": "admin:build:production" },
-            "development": { "buildTarget": "admin:build:development" }
+            "production": {
+              "buildTarget": "admin:build:production"
+            },
+            "development": {
+              "buildTarget": "admin:build:development"
+            }
           },
           "defaultConfiguration": "development"
         }
