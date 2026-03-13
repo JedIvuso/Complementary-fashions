@@ -10,7 +10,6 @@ dist/
 .angular/
 
 # Environment (keep example, ignore actual)
-src/environments/environment.prod.ts
 
 # Logs
 *.log
