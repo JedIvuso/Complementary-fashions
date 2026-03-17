@@ -1,3 +1,4 @@
+import { environment } from "../environments/environment";
 import { Component, OnInit } from "@angular/core";
 import { RouterOutlet } from "@angular/router";
 import { NavbarComponent } from "./shared/components/navbar/navbar.component";
@@ -51,7 +52,7 @@ export class AppComponent implements OnInit {
   private loadBranding() {
     this.api.get<any>("/about").subscribe({
       next: (data) => {
-        const apiBase = "http://localhost:3000";
+        const apiBase = environment.apiUrl.replace("/api", "");
 
         // Apply accent color as CSS variable
         if (data.accentColor) {

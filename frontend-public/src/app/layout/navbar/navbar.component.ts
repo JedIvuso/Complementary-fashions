@@ -1,3 +1,4 @@
+import { environment } from "../../../environments/environment";
 import { Component, inject, HostListener, signal, OnInit } from "@angular/core";
 import { RouterLink, RouterLinkActive } from "@angular/router";
 import { CommonModule } from "@angular/common";
@@ -448,7 +449,7 @@ export class NavbarComponent implements OnInit {
   ngOnInit() {
     this.api.get<any>("/about").subscribe({
       next: (data) => {
-        const base = "http://localhost:3000";
+        const base = environment.apiUrl.replace("/api", "");
         if (data.logoUrl) {
           this.logoUrl.set(
             data.logoUrl.startsWith("http")

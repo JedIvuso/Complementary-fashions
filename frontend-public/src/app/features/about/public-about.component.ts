@@ -1,3 +1,4 @@
+import { environment } from "../../../environments/environment";
 import { Component, OnInit, signal } from "@angular/core";
 import { CommonModule } from "@angular/common";
 import { ApiService } from "../../core/services/api.service";
@@ -356,7 +357,7 @@ import { ApiService } from "../../core/services/api.service";
 })
 export class AboutComponent implements OnInit {
   about = signal<any>(null);
-  private apiBase = "http://localhost:3000";
+  private apiBase = environment.apiUrl.replace("/api", "");
 
   constructor(private api: ApiService) {}
 
