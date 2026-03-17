@@ -1,3 +1,4 @@
+import { environment } from "../../../../environments/environment";
 import { Component, OnInit, signal } from "@angular/core";
 import { CommonModule } from "@angular/common";
 import { ActivatedRoute, RouterLink } from "@angular/router";
@@ -482,7 +483,9 @@ export class ProductDetailComponent implements OnInit {
   }
 
   getImageUrl(url: string) {
-    return url?.startsWith("http") ? url : `http://localhost:3000${url}`;
+    return url?.startsWith("http")
+      ? url
+      : `${environment.apiUrl.replace("/api", "")}${url}`;
   }
   isFavorited() {
     return this.favorites.isFavorited(this.product()?.id);

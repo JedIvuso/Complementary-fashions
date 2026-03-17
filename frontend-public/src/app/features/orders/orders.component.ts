@@ -2,6 +2,7 @@ import { Component, OnInit, signal } from "@angular/core";
 import { CommonModule } from "@angular/common";
 import { Router, RouterLink } from "@angular/router";
 import { OrdersService } from "../../core/services/orders.service";
+import { environment } from "../../../environments/environment";
 
 @Component({
   selector: "app-orders",
@@ -221,7 +222,9 @@ export class OrdersComponent implements OnInit {
     const img =
       product?.images?.find((i: any) => i.isPrimary) || product?.images?.[0];
     const url = img?.imageUrl || "";
-    return url.startsWith("http") ? url : `http://localhost:3000${url}`;
+    return url.startsWith("http")
+      ? url
+      : `${environment.apiUrl.replace("/api", "")}${url}`;
   }
 
   getStatusClass(status: string) {

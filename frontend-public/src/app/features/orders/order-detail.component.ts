@@ -2,6 +2,7 @@ import { Component, OnInit, signal } from "@angular/core";
 import { CommonModule } from "@angular/common";
 import { ActivatedRoute, Router, RouterLink } from "@angular/router";
 import { ApiService } from "../../core/services/api.service";
+import { environment } from "../../../environments/environment";
 
 @Component({
   selector: "app-order-detail",
@@ -490,7 +491,9 @@ export class OrderDetailComponent implements OnInit {
     const img =
       product?.images?.find((i: any) => i.isPrimary) || product?.images?.[0];
     const url = img?.imageUrl || "";
-    return url.startsWith("http") ? url : `http://localhost:3000${url}`;
+    return url.startsWith("http")
+      ? url
+      : `${environment.apiUrl.replace("/api", "")}${url}`;
   }
 
   getStatusIcon(status: string) {
@@ -547,9 +550,9 @@ export class OrderDetailComponent implements OnInit {
         resumeOrder: {
           id: o.id,
           orderNumber: o.orderNumber,
-          total: o.totalAmount,
-          subtotal: o.subtotal,
-          deliveryFee: o.deliveryFee,
+          total: Number(o.totalAmount),
+          subtotal: Number(o.subtotal),
+          deliveryFee: Number(o.deliveryFee),
           deliveryFullName: o.deliveryFullName,
           deliveryPhone: o.deliveryPhone,
           deliveryEmail: o.deliveryEmail,

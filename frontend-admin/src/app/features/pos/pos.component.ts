@@ -10,6 +10,7 @@ import { CommonModule } from "@angular/common";
 import { FormsModule } from "@angular/forms";
 import { ApiService } from "../../core/services/api.service";
 import { AdminAuthService } from "../../core/services/admin-auth.service";
+import { environment } from "../../../environments/environment";
 
 interface CartItem {
   productId: string;
@@ -1520,7 +1521,7 @@ export class PosComponent implements OnInit, OnDestroy {
     if (!img?.imageUrl) return "";
     return img.imageUrl.startsWith("http")
       ? img.imageUrl
-      : `http://localhost:3000${img.imageUrl}`;
+      : `${environment.apiUrl.replace("/api", "")}${img.imageUrl}`;
   }
 
   onProductClick(product: any) {

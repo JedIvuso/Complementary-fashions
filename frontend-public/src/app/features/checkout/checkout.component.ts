@@ -1,3 +1,4 @@
+import { environment } from "../../../environments/environment";
 import { Component, OnInit, OnDestroy, signal } from "@angular/core";
 import { CommonModule } from "@angular/common";
 import { FormsModule } from "@angular/forms";
@@ -1139,7 +1140,9 @@ export class CheckoutComponent implements OnInit, OnDestroy {
     const primary =
       product?.images?.find((i: any) => i.isPrimary) || product?.images?.[0];
     const url = primary?.imageUrl || "";
-    return url.startsWith("http") ? url : `http://localhost:3000${url}`;
+    return url.startsWith("http")
+      ? url
+      : `${environment.apiUrl.replace("/api", "")}${url}`;
   }
 
   getItemTotal(item: any) {
