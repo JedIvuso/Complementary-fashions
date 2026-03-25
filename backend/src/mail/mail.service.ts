@@ -24,11 +24,17 @@ export class MailService {
   }
 
   private get storeUrl() {
-    return this.configService.get("FRONTEND_URL", "http://localhost:4200");
+    return this.configService.get(
+      "FRONTEND_URL",
+      "https://complementary-fashions.vercel.app",
+    );
   }
 
   private get adminUrl() {
-    return this.configService.get("ADMIN_URL", "http://localhost:4201");
+    return this.configService.get(
+      "ADMIN_URL",
+      "https://complementary-fashions-l8tn.vercel.app",
+    );
   }
 
   private baseTemplate(content: string): string {
