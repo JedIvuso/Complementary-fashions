@@ -54,6 +54,12 @@ export class User {
 
   @Column({ name: "reset_token_expiry", nullable: true, type: "timestamp" })
   resetTokenExpiry: Date;
+
+  @Column({ name: "consent_given", default: false })
+  consentGiven: boolean;
+
+  @Column({ name: "consent_date", nullable: true, type: "timestamp" })
+  consentDate: Date;
 }
 
 // Appended for password reset

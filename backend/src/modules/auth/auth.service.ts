@@ -36,6 +36,8 @@ export class AuthService {
     const user = this.usersRepository.create({
       ...registerDto,
       password: hashedPassword,
+      consentGiven: true,
+      consentDate: new Date(),
     });
     await this.usersRepository.save(user);
     // Send welcome email (non-blocking)

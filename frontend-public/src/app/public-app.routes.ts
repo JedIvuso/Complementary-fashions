@@ -75,6 +75,18 @@ export const routes: Routes = [
       ),
   },
   {
+    path: "privacy-policy",
+    loadComponent: () =>
+      import("./features/legal/privacy-policy.component").then(
+        (m) => m.PrivacyPolicyComponent,
+      ),
+  },
+  {
+    path: "terms",
+    loadComponent: () =>
+      import("./features/legal/terms.component").then((m) => m.TermsComponent),
+  },
+  {
     path: "auth/login",
     loadComponent: () =>
       import("./features/auth/login/login.component").then(

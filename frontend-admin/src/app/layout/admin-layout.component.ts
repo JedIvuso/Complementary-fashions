@@ -110,6 +110,14 @@ import { environment } from "../../environments/environment";
             >
               <span class="nav-icon">✍️</span> About & Branding
             </a>
+            <a
+              routerLink="/legal"
+              routerLinkActive="active"
+              class="nav-item"
+              (click)="sidebarOpen.set(false)"
+            >
+              <span class="nav-icon">📜</span> Legal
+            </a>
           </div>
         </nav>
 

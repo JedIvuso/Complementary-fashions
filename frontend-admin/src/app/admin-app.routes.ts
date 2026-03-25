@@ -75,6 +75,13 @@ export const routes: Routes = [
           ),
       },
       {
+        path: "legal",
+        loadComponent: () =>
+          import("./features/legal/admin-legal.component").then(
+            (m) => m.AdminLegalComponent,
+          ),
+      },
+      {
         path: "settings",
         loadComponent: () =>
           import("./features/settings/admin-settings.component").then(
