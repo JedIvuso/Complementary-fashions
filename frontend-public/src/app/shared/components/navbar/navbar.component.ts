@@ -5,6 +5,7 @@ import { AuthService } from "../../../core/services/auth.service";
 import { ThemeService } from "../../../core/services/theme.service";
 import { CartService } from "../../../core/services/cart.service";
 import { ApiService } from "../../../core/services/api.service";
+import { environment } from "../../../../environments/environment";
 
 @Component({
   selector: "app-navbar",
@@ -18,7 +19,15 @@ import { ApiService } from "../../../core/services/api.service";
     >
       <div class="nav-container">
         <a routerLink="/" class="brand">
-          <span class="brand-icon">✦</span>
+          @if (logoUrl()) {
+            <img
+              [src]="logoUrl()"
+              alt="Logo"
+              style="height:40px;width:auto;object-fit:contain;"
+            />
+          } @else {
+            <span class="brand-icon">✦</span>
+          }
           <div class="brand-text">
             <span class="brand-name">Complementary</span>
             <span class="brand-sub">Fashions</span>
@@ -377,16 +386,57 @@ import { ApiService } from "../../../core/services/api.service";
     `,
   ],
 })
-export class NavbarComponent {
+export class NavbarComponent implements OnInit {
   scrolled = signal(false);
   menuOpen = signal(false);
   userMenuOpen = signal(false);
+  logoUrl = signal<string>("");
 
   constructor(
     public auth: AuthService,
     public themeService: ThemeService,
     public cart: CartService,
+    private api: ApiService,
   ) {}
+
+  ngOnInit() {
+    this.api.get<any>("/about").subscribe({
+      next: (data) => {
+        const base = environment.apiUrl.replace("/api", "");
+        if (data.logoUrl) {
+          this.logoUrl.set(
+            data.logoUrl.startsWith("http")
+              ? data.logoUrl
+              : `${base}${data.logoUrl}`,
+          );
+        }
+        if (data.accentColor) {
+          document.documentElement.style.setProperty(
+            "--color-accent",
+            data.accentColor,
+          );
+          document.documentElement.style.setProperty(
+            "--accent",
+            data.accentColor,
+          );
+        }
+        if (data.faviconUrl) {
+          const faviconUrl = data.faviconUrl.startsWith("http")
+            ? data.faviconUrl
+            : `${base}${data.faviconUrl}`;
+          let link = document.querySelector(
+            "link[rel~='icon']",
+          ) as HTMLLinkElement;
+          if (!link) {
+            link = document.createElement("link");
+            link.rel = "icon";
+            document.head.appendChild(link);
+          }
+          link.href = faviconUrl;
+        }
+      },
+    });
+  }
 
   @HostListener("window:scroll")
   onScroll() {
