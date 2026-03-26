@@ -7,17 +7,22 @@ import {
   UseGuards,
   Request,
   Patch,
+  Req,
 } from "@nestjs/common";
 import { ApiTags, ApiBearerAuth } from "@nestjs/swagger";
 import { AuthService } from "./auth.service";
 import { JwtAuthGuard } from "../../common/guards/jwt-auth.guard";
 import { AdminAuthGuard } from "../../common/guards/admin-auth.guard";
 import { CurrentUser } from "../../common/decorators/current-user.decorator";
+import { LoginLogService } from "../login-log/login-log.service";
 
 @ApiTags("Auth")
 @Controller("auth")
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(
+    private readonly authService: AuthService,
+    private readonly loginLogService: LoginLogService,
+  ) {}
 
   @Post("register")
   register(@Body() body: any) {
@@ -25,13 +30,55 @@ export class AuthController {
   }
 
   @Post("login")
-  login(@Body() body: any) {
-    return this.authService.login(body);
+  async login(@Body() body: any, @Req() req: any) {
+    try {
+      const result = await this.authService.login(body);
+      this.loginLogService.log({
+        email: body.email,
+        userType: "customer",
+        fullName: `${result.user.firstName} ${result.user.lastName}`,
+        success: true,
+        ipAddress: req.ip || req.headers["x-forwarded-for"],
+        userAgent: req.headers["user-agent"],
+      });
+      return result;
+    } catch (err) {
+      this.loginLogService.log({
+        email: body.email,
+        userType: "customer",
+        success: false,
+        failureReason: err.message,
+        ipAddress: req.ip || req.headers["x-forwarded-for"],
+        userAgent: req.headers["user-agent"],
+      });
+      throw err;
+    }
   }
 
   @Post("admin/login")
-  adminLogin(@Body() body: any) {
-    return this.authService.adminLogin(body);
+  async adminLogin(@Body() body: any, @Req() req: any) {
+    try {
+      const result = await this.authService.adminLogin(body);
+      this.loginLogService.log({
+        email: body.email,
+        userType: "admin",
+        fullName: `${result.admin.firstName} ${result.admin.lastName}`,
+        success: true,
+        ipAddress: req.ip || req.headers["x-forwarded-for"],
+        userAgent: req.headers["user-agent"],
+      });
+      return result;
+    } catch (err) {
+      this.loginLogService.log({
+        email: body.email,
+        userType: "admin",
+        success: false,
+        failureReason: err.message,
+        ipAddress: req.ip || req.headers["x-forwarded-for"],
+        userAgent: req.headers["user-agent"],
+      });
+      throw err;
+    }
   }
 
   @Get("me")

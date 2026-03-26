@@ -11,12 +11,14 @@ import { JwtAdminStrategy } from "./strategies/jwt-admin.strategy";
 import { User } from "../users/user.entity";
 import { Admin } from "../admins/admin.entity";
 import { MailModule } from "src/mail/mail.module";
+import { LoginLogModule } from "../login-log/login-log.module";
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([User, Admin]),
     PassportModule,
     MailModule,
+    LoginLogModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],
       useFactory: (configService: ConfigService) => ({

@@ -107,6 +107,13 @@ export const routes: Routes = [
             (m) => m.AnalyticsComponent,
           ),
       },
+      {
+        path: "login-logs",
+        loadComponent: () =>
+          import("./features/login-logs/login-logs.component").then(
+            (m) => m.LoginLogsComponent,
+          ),
+      },
     ],
   },
   { path: "**", redirectTo: "" },

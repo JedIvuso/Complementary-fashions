@@ -15,6 +15,7 @@ import { BannersModule } from "./modules/banners/banners.module";
 import { AboutModule } from "./modules/about/about.module";
 import { UploadsModule } from "./modules/uploads/uploads.module";
 import { LegalModule } from "./modules/legal/legal.module";
+import { LoginLogModule } from './modules/login-log/login-log.module';
 
 // Entities
 import { User } from "./modules/users/user.entity";
@@ -32,6 +33,7 @@ import { Banner } from "./modules/banners/banner.entity";
 import { AboutContent } from "./modules/about/about.entity";
 import { PaymentSettings } from "./modules/payments/payment-settings.entity";
 import { LegalContent } from "./modules/legal/legal.entity";
+import { LoginLog } from './modules/login-log/login-log.entity';
 
 @Module({
   imports: [
@@ -58,6 +60,7 @@ import { LegalContent } from "./modules/legal/legal.entity";
           AboutContent,
           PaymentSettings,
           LegalContent,
+          LoginLog
         ];
         if (dbUrl) {
           return {
@@ -102,6 +105,7 @@ import { LegalContent } from "./modules/legal/legal.entity";
     AboutModule,
     UploadsModule,
     LegalModule,
+    LoginLogModule
   ],
 })
 export class AppModule {}
