@@ -405,7 +405,7 @@ export class NavbarComponent implements OnInit {
         const base = environment.apiUrl.replace("/api", "");
         if (data.logoUrl) {
           this.logoUrl.set(
-            data.logoUrl.startsWith("http")
+            data.logoUrl.startsWith("https")
               ? data.logoUrl
               : `${base}${data.logoUrl}`,
           );

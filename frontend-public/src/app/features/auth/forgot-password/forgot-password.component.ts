@@ -1,8 +1,9 @@
-import { Component, signal } from "@angular/core";
+import { Component, OnInit, signal } from "@angular/core";
 import { CommonModule } from "@angular/common";
 import { FormsModule } from "@angular/forms";
 import { RouterLink } from "@angular/router";
 import { ApiService } from "../../../core/services/api.service";
+import { environment } from "../../../../environments/environment";
 
 @Component({
   selector: "app-forgot-password",
@@ -14,7 +15,15 @@ import { ApiService } from "../../../core/services/api.service";
         <div class="auth-visual">
           <div class="auth-pattern"></div>
           <div class="auth-brand">
-            <span class="brand-icon">✦</span>
+            @if (logoUrl()) {
+              <img
+                [src]="logoUrl()"
+                alt="Logo"
+                style="height:56px;width:auto;object-fit:contain;margin-bottom:20px;display:block;margin-left:auto;margin-right:auto;"
+              />
+            } @else {
+              <span class="brand-icon">✦</span>
+            }
             <h2>Complementary<br /><em>Fashions</em></h2>
           </div>
         </div>
@@ -321,7 +330,7 @@ import { ApiService } from "../../../core/services/api.service";
     `,
   ],
 })
-export class ForgotPasswordComponent {
+export class ForgotPasswordComponent implements OnInit {
   step = signal<"request" | "token" | "reset" | "done">("request");
   email = "";
   token = "";
@@ -332,7 +341,24 @@ export class ForgotPasswordComponent {
   resetToken = signal("");
   copied = signal(false);
 
+  logoUrl = signal<string>("");
+
   constructor(private api: ApiService) {}
+
+  ngOnInit() {
+    this.api.get<any>("/about").subscribe({
+      next: (data) => {
+        if (data.logoUrl) {
+          const base = environment.apiUrl.replace("/api", "");
+          this.logoUrl.set(
+            data.logoUrl.startsWith("https")
+              ? data.logoUrl
+              : `${base}${data.logoUrl}`,
+          );
+        }
+      },
+    });
+  }
 
   requestReset() {
     if (!this.email) return this.error.set("Please enter your email address");

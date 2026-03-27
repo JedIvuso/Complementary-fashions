@@ -1,9 +1,11 @@
-import { Component, signal } from "@angular/core";
+import { Component, OnInit, signal } from "@angular/core";
 import { CommonModule } from "@angular/common";
 import { FormsModule } from "@angular/forms";
 import { RouterLink, Router } from "@angular/router";
 import { AuthService } from "../../../core/services/auth.service";
 import { ToastService } from "../../../core/services/toast.service";
+import { ApiService } from "../../../core/services/api.service";
+import { environment } from "../../../../environments/environment";
 
 @Component({
   selector: "app-register",
@@ -15,7 +17,15 @@ import { ToastService } from "../../../core/services/toast.service";
         <div class="auth-visual">
           <div class="auth-pattern"></div>
           <div class="auth-brand">
-            <span class="brand-icon">✦</span>
+            @if (logoUrl()) {
+              <img
+                [src]="logoUrl()"
+                alt="Logo"
+                style="height:56px;width:auto;object-fit:contain;margin-bottom:20px;display:block;margin-left:auto;margin-right:auto;"
+              />
+            } @else {
+              <span class="brand-icon">✦</span>
+            }
             <h2>Join the Family</h2>
             <p>Create your account and discover handcrafted crochet fashion</p>
           </div>
@@ -240,17 +250,35 @@ import { ToastService } from "../../../core/services/toast.service";
     `,
   ],
 })
-export class RegisterComponent {
+export class RegisterComponent implements OnInit {
   form = { firstName: "", lastName: "", email: "", phone: "", password: "" };
   consentGiven = false;
   loading = signal(false);
   error = signal("");
 
+  logoUrl = signal<string>("");
+
   constructor(
     private auth: AuthService,
     private router: Router,
     private toast: ToastService,
+    private api: ApiService,
   ) {}
+
+  ngOnInit() {
+    this.api.get<any>("/about").subscribe({
+      next: (data) => {
+        if (data.logoUrl) {
+          const base = environment.apiUrl.replace("/api", "");
+          this.logoUrl.set(
+            data.logoUrl.startsWith("https")
+              ? data.logoUrl
+              : `${base}${data.logoUrl}`,
+          );
+        }
+      },
+    });
+  }
 
   register() {
     this.loading.set(true);

@@ -1,4 +1,4 @@
-import { Component, signal } from "@angular/core";
+import { Component, OnInit, signal } from "@angular/core";
 import { CommonModule } from "@angular/common";
 import { FormsModule } from "@angular/forms";
 import { RouterLink, Router } from "@angular/router";
@@ -6,6 +6,8 @@ import { AuthService } from "../../../core/services/auth.service";
 import { ToastService } from "../../../core/services/toast.service";
 import { CartService } from "../../../core/services/cart.service";
 import { FavoritesService } from "../../../core/services/favorites.service";
+import { ApiService } from "../../../core/services/api.service";
+import { environment } from "../../../../environments/environment";
 
 @Component({
   selector: "app-login",
@@ -17,7 +19,15 @@ import { FavoritesService } from "../../../core/services/favorites.service";
         <div class="auth-visual">
           <div class="auth-pattern"></div>
           <div class="auth-brand">
-            <span class="brand-icon">✦</span>
+            @if (logoUrl()) {
+              <img
+                [src]="logoUrl()"
+                alt="Logo"
+                style="height:56px;width:auto;object-fit:contain;margin-bottom:20px;display:block;margin-left:auto;margin-right:auto;"
+              />
+            } @else {
+              <span class="brand-icon">✦</span>
+            }
             <h2>Welcome Back</h2>
             <p>Sign in to continue your journey with handcrafted fashion</p>
           </div>
@@ -214,12 +224,14 @@ import { FavoritesService } from "../../../core/services/favorites.service";
     `,
   ],
 })
-export class LoginComponent {
+export class LoginComponent implements OnInit {
   email = "";
   password = "";
   loading = signal(false);
   error = signal("");
   showPassword = signal(false);
+
+  logoUrl = signal<string>("");
 
   constructor(
     private auth: AuthService,
@@ -227,7 +239,23 @@ export class LoginComponent {
     private toast: ToastService,
     private cart: CartService,
     private favs: FavoritesService,
+    private api: ApiService,
   ) {}
+
+  ngOnInit() {
+    this.api.get<any>("/about").subscribe({
+      next: (data) => {
+        if (data.logoUrl) {
+          const base = environment.apiUrl.replace("/api", "");
+          this.logoUrl.set(
+            data.logoUrl.startsWith("https")
+              ? data.logoUrl
+              : `${base}${data.logoUrl}`,
+          );
+        }
+      },
+    });
+  }
 
   togglePassword() {
     this.showPassword.set(!this.showPassword());

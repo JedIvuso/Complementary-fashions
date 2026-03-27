@@ -1,16 +1,27 @@
-import { Component } from "@angular/core";
+import { Component, OnInit, signal } from "@angular/core";
 import { RouterLink } from "@angular/router";
+import { CommonModule } from "@angular/common";
+import { environment } from "../../../../environments/environment";
+import { ApiService } from "src/app/core/services/api.service";
 
 @Component({
   selector: "app-footer",
   standalone: true,
-  imports: [RouterLink],
+  imports: [RouterLink, CommonModule],
   template: `
     <footer class="footer">
       <div class="footer-inner container">
         <div class="footer-brand">
           <div class="brand-logo">
-            <span class="brand-icon">✦</span>
+            @if (logoUrl()) {
+              <img
+                [src]="logoUrl()"
+                alt="Logo"
+                style="height:40px;width:auto;object-fit:contain;"
+              />
+            } @else {
+              <span class="brand-icon">✦</span>
+            }
             <div>
               <div class="brand-name">Complementary</div>
               <div class="brand-tagline">Fashions</div>
@@ -192,6 +203,24 @@ import { RouterLink } from "@angular/router";
     `,
   ],
 })
-export class FooterComponent {
+export class FooterComponent implements OnInit {
   year = new Date().getFullYear();
+  logoUrl = signal<string>("");
+
+  constructor(private api: ApiService) {}
+
+  ngOnInit() {
+    this.api.get<any>("/about").subscribe({
+      next: (data) => {
+        if (data.logoUrl) {
+          const base = environment.apiUrl.replace("/api", "");
+          this.logoUrl.set(
+            data.logoUrl.startsWith("https")
+              ? data.logoUrl
+              : `${base}${data.logoUrl}`,
+          );
+        }
+      },
+    });
+  }
 }
