@@ -8,6 +8,7 @@ import { CartService } from "../../../core/services/cart.service";
 import { FavoritesService } from "../../../core/services/favorites.service";
 import { ApiService } from "../../../core/services/api.service";
 import { environment } from "../../../../environments/environment";
+import { HttpErrorResponse } from "@angular/common/http";
 
 @Component({
   selector: "app-login",
@@ -50,6 +51,7 @@ import { environment } from "../../../../environments/environment";
                   [(ngModel)]="email"
                   name="email"
                   required
+                  [disabled]="loading()"
                 />
               </div>
               <div class="form-group" style="margin-top:16px;">
@@ -62,11 +64,13 @@ import { environment } from "../../../../environments/environment";
                     [(ngModel)]="password"
                     name="password"
                     required
+                    [disabled]="loading()"
                   />
                   <button
                     type="button"
                     class="toggle-pw"
                     (click)="togglePassword()"
+                    [disabled]="loading()"
                   >
                     {{ showPassword() ? "🙈" : "👁️" }}
                   </button>
@@ -74,7 +78,10 @@ import { environment } from "../../../../environments/environment";
               </div>
 
               @if (error()) {
-                <div class="error-msg">{{ error() }}</div>
+                <div class="error-msg">
+                  <span class="error-icon">⚠️</span>
+                  {{ error() }}
+                </div>
               }
 
               <button
@@ -199,6 +206,12 @@ import { environment } from "../../../../environments/environment";
         background: rgba(201, 74, 58, 0.1);
         color: var(--color-error);
         font-size: 0.875rem;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .error-icon {
+        font-size: 1rem;
       }
       .auth-switch {
         margin-top: 24px;
@@ -254,6 +267,9 @@ export class LoginComponent implements OnInit {
           );
         }
       },
+      error: (err) => {
+        console.error("Failed to load logo:", err);
+      },
     });
   }
 
@@ -262,22 +278,44 @@ export class LoginComponent implements OnInit {
   }
 
   login() {
+    // Clear previous error
+    this.error.set("");
+
+    // Validate inputs
     if (!this.email || !this.password) {
       this.error.set("Please fill in all fields");
       return;
     }
+
     this.loading.set(true);
-    this.error.set("");
+
     this.auth.login(this.email, this.password).subscribe({
-      next: () => {
+      next: (response) => {
+        // Success - clear loading, show success message, navigate
+        this.loading.set(false);
         this.toast.success("Welcome back!");
         this.cart.loadCart().subscribe();
         this.favs.load().subscribe();
         this.router.navigate(["/"]);
       },
-      error: (e) => {
-        this.error.set(e.error?.message || "Invalid credentials");
+      error: (error: HttpErrorResponse) => {
+        // Handle error - stay on login page
         this.loading.set(false);
+
+        // Extract error message from the response
+        let errorMessage = "Invalid credentials. Please try again.";
+
+        if (error.error) {
+          if (typeof error.error === "string") {
+            errorMessage = error.error;
+          } else if (error.error.message) {
+            errorMessage = error.error.message;
+          } else if (error.message) {
+            errorMessage = error.message;
+          }
+        }
+
+        this.error.set(errorMessage);
       },
     });
   }
